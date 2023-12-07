@@ -1,0 +1,28 @@
+[package]
+name = "emballoc"
+description = "Simple but reliable memory allocator for embedded Rust and #![no_std]"
+version = "0.2.0"
+edition = "2021"
+categories = ["memory-management", "no-std", "embedded", "algorithms"]
+keywords = ["allocator", "embedded", "no-std", "no_std"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jfrimmel/emballoc"
+documentation = "https://docs.rs/emballoc"
+rust-version = "1.57"
+exclude = ["/.circleci"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies.spin]
+version = "0.9.8"
+default-features = false
+features = ["mutex", "spin_mutex"]
+
+[features]
+# Before enabling this read the note about portable_atomic at
+# https://github.com/mvdnes/spin-rs#feature-flags
+#
+# Unless you are running on a system without atomics, you probably
+# don't want to enable this feature.
+portable_atomic = ["spin/portable_atomic"]
