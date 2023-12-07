@@ -1,6 +1,19 @@
 ## `⌽` MicroDB
+Serialized database for Microcontrollers with memory efficiency in mind.
+```
+CURRENT PERFORMANCE:
+Iterates over a 7MB [100K Entries] database file while only utilizing 1KB on the heap in 800ms.
+```
 
-### 8-bytes aligned database structure
+___
+### `➢` Structure (Not Finalized)
+#### `⤷` 8-bytes aligned database structure
+```
+EOE: End-Of-Entry
+An arbitrary series of bytes to indicate the end of an entry (needs more research).
+```
+
+
 ```
 |   00   |   01   |   02   |   03   |   04   |   05   |   06   |   07   |
 |--------|--------|--------|--------|--------|--------|--------|--------|
@@ -13,7 +26,7 @@
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  0xFF  |  0xFE  |  0xFD  |  0xFC  |  0xFB  |  0xFA  |  0xF9  |  0xF9  | -> End-Of-Transmission Block
+|  0xFF  |  0xFE  |  0xFD  |  0xFC  |  0xFB  |  0xFA  |  0xF9  |  0xF9  | -> EOE Block
 |                           > SECOND CHUNK <                            |
 |  0x02  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  | -> Entry UID
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
@@ -23,5 +36,5 @@
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  0xFF  |  0xFE  |  0xFD  |  0xFC  |  0xFB  |  0xFA  |  0xF9  |  0xF9  | -> End-Of-Transmission Block
+|  0xFF  |  0xFE  |  0xFD  |  0xFC  |  0xFB  |  0xFA  |  0xF9  |  0xF9  | -> EOE Block
 ```

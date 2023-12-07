@@ -1,7 +1,7 @@
 use crate::error::DBError;
 use crate::structures::DBEntry;
 use crate::BLOCK_SIZE;
-use crate::EOT_BLOCK;
+use crate::EOE_BLOCK;
 
 extern crate alloc;
 use alloc::collections::BTreeSet;
@@ -75,7 +75,7 @@ where
             self.pad_serialized_chunk(block, &mut buffer);
         }
 
-        buffer.extend(EOT_BLOCK);
+        buffer.extend(EOE_BLOCK);
         Ok(buffer)
     }
 
@@ -100,7 +100,7 @@ where
                 self.pad_serialized_chunk(block, &mut buffer);
             }
 
-            buffer.extend(EOT_BLOCK);
+            buffer.extend(EOE_BLOCK);
             entry += 1;
         }
         Ok(buffer)
@@ -127,7 +127,7 @@ where
                 uid = Some(self.deserialize_uid(block)?);
             }
 
-            if block == EOT_BLOCK {
+            if block == EOE_BLOCK {
                 let item: Result<T::Item, DBError> = self.bincode_deserialize(&bytes);
                 if let Ok(item) = item {
                     if let Some(uid) = uid {

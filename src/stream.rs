@@ -1,5 +1,5 @@
 use crate::BLOCK_SIZE;
-use crate::EOT_BLOCK;
+use crate::EOE_BLOCK;
 
 use std::fs::File;
 use std::io;
@@ -33,7 +33,7 @@ impl DBFileStream {
         for block in self.into_iter() {
             if let Ok(block) = block {
                 data.extend(block);
-                if block == EOT_BLOCK {
+                if block == EOE_BLOCK {
                     return Ok(data);
                 }
                 continue;
