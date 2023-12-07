@@ -2,7 +2,7 @@
 Serialized database for Microcontrollers with memory efficiency in mind.
 ```
 CURRENT PERFORMANCE:
-Iterates over a 7MB [100K Entries] database file while only utilizing 1KB on the heap in 800ms.
+Iterates over an entire 7MB database file containing 100K entries while only utilizing 1KB on the heap in 1700ms (17μs per entry).
 ```
 
 ___

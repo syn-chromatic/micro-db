@@ -87,6 +87,26 @@ fn get_entry(path: &path::PathBuf) {
     println!("Item: {:?}", item);
 }
 
+fn database_benchmark(path: &path::PathBuf) {
+    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let db_iterator = db.get_iterator();
+
+    let mut uid: usize = 0;
+    let instant: Instant = Instant::now();
+    for entry in db_iterator.into_iter() {
+        if let Ok(entry) = entry {
+            uid = entry.uid;
+        }
+    }
+    let taken: Duration = instant.elapsed();
+    println!(
+        "Taken: {}ms | Per Entry: {}us | Entries: {}",
+        taken.as_millis(),
+        taken.as_micros() / uid as u128,
+        uid,
+    );
+}
+
 fn test_database_integrity(path: &path::PathBuf) {
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let db_iterator = db.get_iterator();
@@ -116,6 +136,7 @@ fn main() {
     let path = path::PathBuf::from("./database.mdb");
     // write_items(&path);
     // find_item(&path);
-    // // get_entry(&path);
-    test_database_integrity(&path);
+    // get_entry(&path);
+    // test_database_integrity(&path);
+    database_benchmark(&path);
 }
