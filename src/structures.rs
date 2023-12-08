@@ -18,7 +18,7 @@ pub struct DBEntry<T>
 where
     T: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    pub uid: usize,
+    pub uid: u32,
     pub item: T,
 }
 
@@ -26,7 +26,7 @@ impl<T> DBEntry<T>
 where
     T: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    pub fn new(uid: usize, item: T) -> Self {
+    pub fn new(uid: u32, item: T) -> Self {
         Self { uid, item }
     }
 }

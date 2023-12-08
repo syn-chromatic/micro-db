@@ -1,5 +1,5 @@
-#[global_allocator]
-static ALLOCATOR: emballoc::Allocator<80_000> = emballoc::Allocator::new();
+// #[global_allocator]
+// static ALLOCATOR: emballoc::Allocator<20_000_000> = emballoc::Allocator::new();
 
 mod db;
 mod error;
@@ -18,9 +18,13 @@ use db::Database;
 
 use serde::{Deserialize, Serialize};
 
-const BLOCK_SIZE: usize = 8;
-const CACHE_SIZE: usize = 128;
-const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8];
+const BLOCK_SIZE: usize = 4;
+const CACHE_SIZE: usize = 512;
+// const EOE_BLOCK: [u8; BLOCK_SIZE] = [
+//     0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6, 0xF5, 0xF4, 0xF3, 0xF2, 0xF1, 0xF0,
+// ];
+// const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8];
+const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC];
 
 #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 struct ExampleStruct {
@@ -35,7 +39,7 @@ fn write_items(path: &path::PathBuf) {
 
     let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
 
-    for idx in 1..50_000 {
+    for idx in 0..50_001 {
         let my_struct = ExampleStruct {
             uid: idx as u128,
             start_t: [idx, idx],
@@ -43,6 +47,7 @@ fn write_items(path: &path::PathBuf) {
             week: [true; 7],
         };
         items.insert(my_struct);
+        print!("Idx: {}    \r", idx);
     }
 
     db.add_items(items);
@@ -51,7 +56,7 @@ fn write_items(path: &path::PathBuf) {
 fn write_item(path: &path::PathBuf) {
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
-    for idx in 50..100 {
+    for idx in 0..100_000 {
         let my_struct = ExampleStruct {
             uid: idx as u128,
             start_t: [idx, idx],
@@ -59,6 +64,7 @@ fn write_item(path: &path::PathBuf) {
             week: [true; 7],
         };
         db.add_item(&my_struct);
+        print!("Idx: {}     \r", idx);
     }
 }
 
@@ -92,7 +98,7 @@ fn database_benchmark(path: &path::PathBuf) {
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let db_iterator = db.get_iterator();
 
-    let mut uid: usize = 0;
+    let mut uid: u32 = 0;
     let instant: Instant = Instant::now();
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {
@@ -101,9 +107,9 @@ fn database_benchmark(path: &path::PathBuf) {
     }
     let taken: Duration = instant.elapsed();
     println!(
-        "Taken: {}ms | Per Entry: {}us | Entries: {}",
+        "Taken: {}ms | Per Entry: {:.2}us | Entries: {}",
         taken.as_millis(),
-        taken.as_micros() / uid as u128,
+        taken.as_micros() as f64 / uid as f64,
         uid,
     );
 }
@@ -111,16 +117,16 @@ fn database_benchmark(path: &path::PathBuf) {
 fn test_database_integrity(path: &path::PathBuf) {
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let db_iterator = db.get_iterator();
-    let mut uid: usize = 0;
+    let mut uid: u32 = 0;
 
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {
             if uid == entry.uid {
-                print!(
-                    "EntryUID: {} | UsedMem: {}KB       \r",
-                    entry.uid,
-                    ALLOCATOR.get_used_memory() / 1024
-                );
+                // print!(
+                //     "EntryUID: {} | UsedMem: {}KB       \r",
+                //     entry.uid,
+                //     ALLOCATOR.get_used_memory() / 1024
+                // );
                 uid += 1;
                 continue;
             } else {
@@ -134,10 +140,13 @@ fn test_database_integrity(path: &path::PathBuf) {
 }
 
 fn main() {
+    println!("\n\n\n");
     let path = path::PathBuf::from("C:/Users/shady/Desktop/micro-db/database.mdb");
     // write_items(&path);
+    // write_item(&path);
     // find_item(&path);
     // get_entry(&path);
     test_database_integrity(&path);
     database_benchmark(&path);
+    println!("\n\n\n");
 }

@@ -44,11 +44,11 @@ where
         &self,
         chunk: Option<Vec<u8>>,
         db_serializer: &DBSerializer<'_, T>,
-    ) -> usize {
+    ) -> u32 {
         if let Some(chunk) = chunk {
             let first_block: &[u8] = &chunk[..BLOCK_SIZE];
-            let entry: usize = db_serializer.deserialize_uid(first_block).unwrap();
-            return entry + 1;
+            let uid: u32 = db_serializer.deserialize_uid(first_block).unwrap();
+            return uid + 1;
         }
         0
     }
@@ -76,7 +76,7 @@ where
         iterator
     }
 
-    pub fn get_entry(&self, uid: usize) -> Result<DBEntry<T::Item>, DBError> {
+    pub fn get_entry(&self, uid: u32) -> Result<DBEntry<T::Item>, DBError> {
         let iterator: DBIterator<'_, T> = self.get_iterator();
 
         for entry in iterator.into_iter() {
@@ -115,7 +115,7 @@ where
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
-        let uid: usize = self.get_uid_from_chunk(last_chunk, &db_serializer);
+        let uid: u32 = self.get_uid_from_chunk(last_chunk, &db_serializer);
 
         let data: Vec<u8> = db_serializer.serialize(uid, item).unwrap();
         db_stream.append_end(&data);
@@ -133,9 +133,24 @@ where
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
-        let uid: usize = self.get_uid_from_chunk(last_chunk, &db_serializer);
+        let uid: u32 = self.get_uid_from_chunk(last_chunk, &db_serializer);
 
         let data: Vec<u8> = db_serializer.serialize_items(uid, items).unwrap();
         db_stream.append_end(&data);
     }
+
+
+    pub fn remove_entry(&self, uid: u32) {
+        let iterator: DBIterator<'_, T> = self.get_iterator();
+
+        for entry in iterator.into_iter() {
+            if let Ok(entry) = entry {
+                if entry.uid == uid {
+
+                }
+            }
+        }
+    }
+
+
 }

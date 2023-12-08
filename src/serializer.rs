@@ -61,9 +61,9 @@ where
         Self { _marker }
     }
 
-    pub fn serialize(&self, entry: usize, item: &T::Item) -> Result<Vec<u8>, DBError> {
+    pub fn serialize(&self, uid: u32, item: &T::Item) -> Result<Vec<u8>, DBError> {
         let mut buffer: Vec<u8> = Vec::new();
-        let uid_block: Vec<u8> = self.serialize_uid(entry)?;
+        let uid_block: Vec<u8> = self.serialize_uid(uid)?;
         buffer.extend(uid_block);
 
         let bytes: Vec<u8> = self.bincode_serialize(item)?;
@@ -81,15 +81,14 @@ where
 
     pub fn serialize_items(
         &self,
-        mut entry: usize,
+        mut uid: u32,
         items: BTreeSet<T::Item>,
     ) -> Result<Vec<u8>, DBError> {
         let mut buffer: Vec<u8> = Vec::new();
 
         for item in items.into_iter() {
             let bytes: Vec<u8> = self.bincode_serialize(&item)?;
-
-            let uid_block: Vec<u8> = self.serialize_uid(entry)?;
+            let uid_block: Vec<u8> = self.serialize_uid(uid)?;
             buffer.extend(uid_block);
 
             for block in bytes.chunks(BLOCK_SIZE) {
@@ -101,14 +100,14 @@ where
             }
 
             buffer.extend(EOE_BLOCK);
-            entry += 1;
+            uid += 1;
         }
         Ok(buffer)
     }
 
     pub fn deserialize(&self, buffer: &[u8]) -> Result<DBEntry<T::Item>, DBError> {
         let uid_block: &[u8] = &buffer[..BLOCK_SIZE];
-        let uid: usize = self.deserialize_uid(uid_block)?;
+        let uid: u32 = self.deserialize_uid(uid_block)?;
 
         let buffer: &[u8] = &buffer[BLOCK_SIZE..buffer.len() - BLOCK_SIZE];
         let item: T::Item = self.bincode_deserialize(buffer)?;
@@ -120,7 +119,7 @@ where
     pub fn deserialize_items(&self, buffer: &[u8]) -> Result<Vec<DBEntry<T::Item>>, DBError> {
         let mut items: Vec<DBEntry<T::Item>> = Vec::new();
 
-        let mut uid: Option<usize> = None;
+        let mut uid: Option<u32> = None;
         let mut bytes: Vec<u8> = Vec::new();
         for (idx, block) in buffer.chunks(BLOCK_SIZE).enumerate() {
             if idx == 0 {
@@ -144,8 +143,8 @@ where
         Ok(items)
     }
 
-    pub fn serialize_uid(&self, entry: usize) -> Result<Vec<u8>, DBError> {
-        let bytes: Result<Vec<u8>, Box<bincode::ErrorKind>> = bincode::serialize(&entry);
+    pub fn serialize_uid(&self, uid: u32) -> Result<Vec<u8>, DBError> {
+        let bytes: Result<Vec<u8>, Box<bincode::ErrorKind>> = bincode::serialize(&uid);
         if let Ok(mut bytes) = bytes {
             bytes.resize(BLOCK_SIZE, 0);
             return Ok(bytes);
@@ -153,8 +152,8 @@ where
         Err(DBError::UIDSerializeError)
     }
 
-    pub fn deserialize_uid(&self, buffer: &[u8]) -> Result<usize, DBError> {
-        let uid: Result<usize, Box<bincode::ErrorKind>> = bincode::deserialize(buffer);
+    pub fn deserialize_uid(&self, buffer: &[u8]) -> Result<u32, DBError> {
+        let uid: Result<u32, Box<bincode::ErrorKind>> = bincode::deserialize(buffer);
         if let Ok(uid) = uid {
             return Ok(uid);
         }

@@ -49,7 +49,7 @@ impl<const N: usize> DBStreamCache<N> {
         self.ready = true;
     }
 
-    pub fn get_next_chunk(&mut self) -> [u8; BLOCK_SIZE] {
+    pub fn get_chunk(&mut self) -> [u8; BLOCK_SIZE] {
         let (head, tail): (usize, usize) = self.get_segment_bounds();
 
         let bytes: &[u8] = &self.cache[head..tail];
@@ -110,7 +110,7 @@ impl<const N: usize> Iterator for DBFileStream<N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cache.is_ready() {
-            let bytes: [u8; 8] = self.cache.get_next_chunk();
+            let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
             return Some(Ok(bytes));
         }
 
@@ -124,7 +124,7 @@ impl<const N: usize> Iterator for DBFileStream<N> {
         }
 
         self.cache.set_cache(buffer);
-        let bytes: [u8; 8] = self.cache.get_next_chunk();
+        let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
         return Some(Ok(bytes));
     }
 }
