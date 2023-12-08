@@ -139,18 +139,19 @@ where
         db_stream.append_end(&data);
     }
 
+    pub fn remove_entry(&self, uid: u32) -> Result<(), std::io::Error> {
+        let file: File = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&self.path)
+            .unwrap();
 
-    pub fn remove_entry(&self, uid: u32) {
-        let iterator: DBIterator<'_, T> = self.get_iterator();
-
-        for entry in iterator.into_iter() {
-            if let Ok(entry) = entry {
-                if entry.uid == uid {
-
-                }
-            }
+        let mut db_stream: DBFileStream<BLOCK_SIZE> = DBFileStream::new(file);
+        for _ in 0..uid {
+            db_stream.next_chunk()?;
         }
+
+        db_stream.remove_chunk()?;
+        Ok(())
     }
-
-
 }

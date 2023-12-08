@@ -49,6 +49,10 @@ impl<const N: usize> DBStreamCache<N> {
         self.ready = true;
     }
 
+    pub fn clear(&mut self) {
+        self.ready = false;
+    }
+
     pub fn get_chunk(&mut self) -> [u8; BLOCK_SIZE] {
         let (head, tail): (usize, usize) = self.get_segment_bounds();
 
@@ -75,6 +79,25 @@ impl<const N: usize> DBFileStream<N> {
         DBFileStream { file, cache }
     }
 
+    pub fn get_chunk_bounds(&mut self) -> Result<(u64, u64), io::Error> {
+        let st_position: u64 = self.file.stream_position()?;
+
+        let mut en_position: u64 = st_position;
+
+        for block in self.into_iter() {
+            en_position += BLOCK_SIZE as u64;
+            if let Ok(block) = block {
+                if block == EOE_BLOCK {
+                    break;
+                }
+                continue;
+            }
+            return Err(io::ErrorKind::InvalidData.into());
+        }
+        self.file.seek(io::SeekFrom::Start(st_position))?;
+        Ok((st_position, en_position))
+    }
+
     pub fn append_end(&mut self, data: &[u8]) {
         while let Ok(_) = self.next_chunk() {}
         self.file.write_all(data).unwrap();
@@ -88,7 +111,7 @@ impl<const N: usize> DBFileStream<N> {
         last_chunk
     }
 
-    pub fn next_chunk(&mut self) -> Result<Vec<u8>, ()> {
+    pub fn next_chunk(&mut self) -> Result<Vec<u8>, io::Error> {
         let mut data: Vec<u8> = Vec::new();
 
         for block in self.into_iter() {
@@ -99,9 +122,60 @@ impl<const N: usize> DBFileStream<N> {
                 }
                 continue;
             }
-            return Err(());
+            return Err(io::ErrorKind::InvalidData.into());
         }
-        Err(())
+        Err(io::ErrorKind::InvalidData.into())
+    }
+
+    pub fn iterative_remove(
+        &mut self,
+        st_pos1: &mut u64,
+        en_pos1: &mut u64,
+    ) -> Result<(), io::Error> {
+        loop {
+            // current chunk bounds
+            // println!("STC: {} | ENC: {}", st_pos1, en_pos1);
+
+            // Get current chunk
+            let current_chunk: Vec<u8> = self.next_chunk()?;
+            let current_uid: &[u8] = &current_chunk[..BLOCK_SIZE];
+
+            // Get next chunk bounds
+            let (st_pos2, en_pos2) = self.get_chunk_bounds()?;
+            // println!("STN: {} | ENN: {}", st_pos2, en_pos2);
+
+            // Get next chunk
+            let mut next_chunk: Vec<u8> = self.next_chunk()?;
+
+            // Overwrite UID from current chunk
+            next_chunk[..BLOCK_SIZE].copy_from_slice(current_uid);
+
+            // Print chunk
+            // println!("Chunk: {:?}", next_chunk);
+
+            // Seek to current chunk start
+            self.file.seek(io::SeekFrom::Start(*st_pos1))?;
+
+            // Overwrite next chunk data
+            self.file.write(&next_chunk)?;
+
+            // Seek to the start of next chunk
+            self.file.seek(io::SeekFrom::Start(*en_pos1))?;
+
+            *st_pos1 = st_pos2;
+            *en_pos1 = en_pos2;
+        }
+
+        Ok(())
+    }
+
+    pub fn remove_chunk(&mut self) -> Result<(), io::Error> {
+        let (mut st_pos1, mut en_pos1) = self.get_chunk_bounds()?;
+
+        let _ = self.iterative_remove(&mut st_pos1, &mut en_pos1);
+
+        let result: Result<(), io::Error> = self.file.set_len(st_pos1);
+        Ok(())
     }
 }
 

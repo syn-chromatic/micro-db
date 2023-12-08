@@ -1,5 +1,5 @@
-// #[global_allocator]
-// static ALLOCATOR: emballoc::Allocator<20_000_000> = emballoc::Allocator::new();
+#[global_allocator]
+static ALLOCATOR: emballoc::Allocator<20_000> = emballoc::Allocator::new();
 
 mod db;
 mod error;
@@ -39,7 +39,7 @@ fn write_items(path: &path::PathBuf) {
 
     let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
 
-    for idx in 0..50_001 {
+    for idx in 0..10_000 {
         let my_struct = ExampleStruct {
             uid: idx as u128,
             start_t: [idx, idx],
@@ -131,7 +131,7 @@ fn test_database_integrity(path: &path::PathBuf) {
                 continue;
             } else {
                 println!("DATABASE INTEGRITY FAIL");
-                println!("ENTRY: {:?} | CORRECT UID: {}", entry, uid);
+                println!("FAIL AT ENTRY: {:?} | CORRECT UID: {}", entry, uid);
                 return;
             }
         }
@@ -139,14 +139,49 @@ fn test_database_integrity(path: &path::PathBuf) {
     println!("\nDATABASE INTEGRITY SUCCESS");
 }
 
+pub fn test_remove(path: &path::PathBuf) {
+    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+
+    for _ in 0..100 {
+        let uid: u32 = 0;
+        let instant: Instant = Instant::now();
+        let result = db.remove_entry(uid);
+        let taken: Duration = instant.elapsed();
+        println!("Taken: {}ms", taken.as_millis(),);
+        println!("Remove Result: {:?}", result);
+    }
+}
+
+pub fn print_database(path: &path::PathBuf) {
+    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let db_iterator = db.get_iterator();
+
+    for entry in db_iterator.into_iter() {
+        if let Ok(entry) = entry {
+            println!("Entry: {:?}", entry);
+        }
+    }
+}
+
+pub fn refresh_database(path: &path::PathBuf) {
+    let _ = std::fs::remove_file(path);
+    write_items(path);
+}
+
 fn main() {
     println!("\n\n\n");
     let path = path::PathBuf::from("C:/Users/shady/Desktop/micro-db/database.mdb");
-    // write_items(&path);
+    // refresh_database(&path);
+    write_items(&path);
     // write_item(&path);
     // find_item(&path);
     // get_entry(&path);
+
     test_database_integrity(&path);
     database_benchmark(&path);
+    test_remove(&path);
+    // print_database(&path);
+    test_database_integrity(&path);
+
     println!("\n\n\n");
 }
