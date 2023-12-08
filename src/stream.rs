@@ -5,13 +5,74 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
-pub struct DBFileStream {
-    file: File,
+pub struct DBStreamCache<const N: usize> {
+    ready: bool,
+    offset: usize,
+    cache: [u8; N],
 }
 
-impl DBFileStream {
+impl<const N: usize> DBStreamCache<N> {
+    fn get_segment_bounds(&self) -> (usize, usize) {
+        let head: usize = self.offset * BLOCK_SIZE;
+        let tail: usize = head + BLOCK_SIZE;
+        (head, tail)
+    }
+
+    fn update_offset(&mut self, tail: usize) {
+        if tail == N {
+            self.ready = false;
+            self.offset = 0;
+        } else {
+            self.offset += 1;
+        }
+    }
+}
+
+impl<const N: usize> DBStreamCache<N> {
+    pub fn new() -> Self {
+        let ready: bool = false;
+        let chunk_idx: usize = 0;
+        let cache: [u8; N] = [0; N];
+        Self {
+            ready,
+            offset: chunk_idx,
+            cache,
+        }
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.ready
+    }
+
+    pub fn set_cache(&mut self, cache: [u8; N]) {
+        self.cache = cache;
+        self.ready = true;
+    }
+
+    pub fn get_next_chunk(&mut self) -> [u8; BLOCK_SIZE] {
+        let (head, tail): (usize, usize) = self.get_segment_bounds();
+
+        let bytes: &[u8] = &self.cache[head..tail];
+        let chunk: [u8; BLOCK_SIZE] = {
+            let mut result: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            result.copy_from_slice(&bytes[..BLOCK_SIZE]);
+            result
+        };
+
+        self.update_offset(tail);
+        chunk
+    }
+}
+
+pub struct DBFileStream<const N: usize> {
+    file: File,
+    cache: DBStreamCache<N>,
+}
+
+impl<const N: usize> DBFileStream<N> {
     pub fn new(file: File) -> Self {
-        DBFileStream { file }
+        let cache: DBStreamCache<N> = DBStreamCache::new();
+        DBFileStream { file, cache }
     }
 
     pub fn append_end(&mut self, data: &[u8]) {
@@ -44,15 +105,26 @@ impl DBFileStream {
     }
 }
 
-impl Iterator for DBFileStream {
+impl<const N: usize> Iterator for DBFileStream<N> {
     type Item = Result<[u8; BLOCK_SIZE], io::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut buffer: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
-        match self.file.read_exact(&mut buffer) {
-            Ok(()) => Some(Ok(buffer)),
-            Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => None,
-            Err(e) => Some(Err(e)),
+        if self.cache.is_ready() {
+            let bytes: [u8; 8] = self.cache.get_next_chunk();
+            return Some(Ok(bytes));
         }
+
+        let mut buffer: [u8; N] = [0; N];
+
+        let result: Result<(), io::Error> = self.file.read_exact(&mut buffer);
+        if let Err(error) = result {
+            if buffer.iter().all(|&x| x == 0) {
+                return Some(Err(error));
+            }
+        }
+
+        self.cache.set_cache(buffer);
+        let bytes: [u8; 8] = self.cache.get_next_chunk();
+        return Some(Ok(bytes));
     }
 }

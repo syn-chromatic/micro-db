@@ -1,5 +1,5 @@
 #[global_allocator]
-static ALLOCATOR: emballoc::Allocator<20_000> = emballoc::Allocator::new();
+static ALLOCATOR: emballoc::Allocator<80_000> = emballoc::Allocator::new();
 
 mod db;
 mod error;
@@ -19,6 +19,7 @@ use db::Database;
 use serde::{Deserialize, Serialize};
 
 const BLOCK_SIZE: usize = 8;
+const CACHE_SIZE: usize = 128;
 const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8];
 
 #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
@@ -133,10 +134,10 @@ fn test_database_integrity(path: &path::PathBuf) {
 }
 
 fn main() {
-    let path = path::PathBuf::from("./database.mdb");
+    let path = path::PathBuf::from("C:/Users/shady/Desktop/micro-db/database.mdb");
     // write_items(&path);
     // find_item(&path);
     // get_entry(&path);
-    // test_database_integrity(&path);
+    test_database_integrity(&path);
     database_benchmark(&path);
 }

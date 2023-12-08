@@ -1,6 +1,7 @@
 use crate::error;
 use crate::serializer;
 use crate::stream;
+use crate::CACHE_SIZE;
 
 use error::DBError;
 use serializer::DBSerializer;
@@ -35,7 +36,7 @@ where
     T: IntoIterator + Eq,
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    stream: DBFileStream,
+    stream: DBFileStream<CACHE_SIZE>,
     serializer: DBSerializer<'a, T>,
 }
 
@@ -44,7 +45,7 @@ where
     T: IntoIterator + Eq,
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    pub fn new(stream: DBFileStream, serializer: DBSerializer<'a, T>) -> Self {
+    pub fn new(stream: DBFileStream<CACHE_SIZE>, serializer: DBSerializer<'a, T>) -> Self {
         Self { stream, serializer }
     }
 }
