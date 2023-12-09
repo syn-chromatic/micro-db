@@ -1,8 +1,7 @@
+use crate::error::DBError;
 use crate::structures::FileTrait;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
-
-use std::io;
 
 pub struct Position<const N: usize> {
     start: usize,
@@ -105,7 +104,7 @@ pub struct DBFileStream<const N: usize> {
 }
 
 impl<const N: usize> DBFileStream<N> {
-    fn update_cache(&mut self) -> Result<(), io::Error> {
+    fn update_cache(&mut self) -> Result<(), DBError> {
         if !self.cache.is_ready() {
             let st_position = self.file.stream_position()?;
             for _ in self.into_iter() {
@@ -116,7 +115,7 @@ impl<const N: usize> DBFileStream<N> {
         Ok(())
     }
 
-    fn seek_from_start(&mut self, start: usize) -> Result<(), io::Error> {
+    fn seek_from_start(&mut self, start: usize) -> Result<(), DBError> {
         let cache_st: usize = self.cache.position.start;
         let cache_en: usize = self.cache.position.end;
 
@@ -129,7 +128,7 @@ impl<const N: usize> DBFileStream<N> {
         Ok(())
     }
 
-    fn write(&mut self, buffer: &[u8]) -> Result<(), io::Error> {
+    fn write(&mut self, buffer: &[u8]) -> Result<(), DBError> {
         self.file.write(buffer)?;
         Ok(())
     }
@@ -138,7 +137,7 @@ impl<const N: usize> DBFileStream<N> {
         &mut self,
         st_pos1: &mut usize,
         en_pos1: &mut usize,
-    ) -> Result<(), io::Error> {
+    ) -> Result<(), DBError> {
         loop {
             let current_chunk: Vec<u8> = self.next_chunk()?;
             let current_uid: &[u8] = &current_chunk[..BLOCK_SIZE];
@@ -173,7 +172,7 @@ impl<const N: usize> DBFileStream<N> {
         DBFileStream { file, cache }
     }
 
-    pub fn get_chunk_bounds(&mut self) -> Result<(usize, usize), io::Error> {
+    pub fn get_chunk_bounds(&mut self) -> Result<(usize, usize), DBError> {
         self.update_cache()?;
         let cache_st: usize = self.cache.offset + self.cache.position.start;
         for block in self.into_iter() {
@@ -183,7 +182,7 @@ impl<const N: usize> DBFileStream<N> {
                 }
                 continue;
             }
-            return Err(io::ErrorKind::InvalidData.into());
+            return Err(DBError::InvalidData);
         }
 
         let cache_en: usize = self.cache.offset + self.cache.position.start;
@@ -204,7 +203,7 @@ impl<const N: usize> DBFileStream<N> {
         last_chunk
     }
 
-    pub fn next_chunk(&mut self) -> Result<Vec<u8>, io::Error> {
+    pub fn next_chunk(&mut self) -> Result<Vec<u8>, DBError> {
         let mut data: Vec<u8> = Vec::new();
 
         for block in self.into_iter() {
@@ -215,12 +214,12 @@ impl<const N: usize> DBFileStream<N> {
                 }
                 continue;
             }
-            return Err(io::ErrorKind::Unsupported.into());
+            return Err(DBError::InvalidData);
         }
-        Err(io::ErrorKind::AlreadyExists.into())
+        Err(DBError::InvalidData)
     }
 
-    pub fn remove_chunk(&mut self) -> Result<(), io::Error> {
+    pub fn remove_chunk(&mut self) -> Result<(), DBError> {
         let (mut st_pos1, mut en_pos1) = self.get_chunk_bounds()?;
         self.rebuild_database(&mut st_pos1, &mut en_pos1)?;
         self.file.set_len(st_pos1)?;
@@ -229,7 +228,7 @@ impl<const N: usize> DBFileStream<N> {
 }
 
 impl<const N: usize> Iterator for DBFileStream<N> {
-    type Item = Result<[u8; BLOCK_SIZE], io::Error>;
+    type Item = Result<[u8; BLOCK_SIZE], DBError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cache.is_ready() {
@@ -242,7 +241,7 @@ impl<const N: usize> Iterator for DBFileStream<N> {
             let end: usize = start + N;
 
             let mut buffer: [u8; N] = [0; N];
-            let result: Result<(), io::Error> = self.file.read_exact(&mut buffer);
+            let result: Result<(), DBError> = self.file.read_exact(&mut buffer);
             if let Err(error) = result {
                 if buffer.iter().all(|&x| x == 0) {
                     return Some(Err(error));

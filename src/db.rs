@@ -139,7 +139,7 @@ where
         db_stream.append_end(&data);
     }
 
-    pub fn remove_entry(&self, uid: u32) -> Result<(), std::io::Error> {
+    pub fn remove_entry(&self, uid: u32) -> Result<(), DBError> {
         let file: File = OpenOptions::new()
             .read(true)
             .write(true)
