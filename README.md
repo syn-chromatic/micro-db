@@ -1,7 +1,13 @@
 ## `⌽` MicroDB
 Serialized database for Microcontrollers with memory efficiency in mind.
+
+#### `⤷` Notes
 ```
-CURRENT PERFORMANCE:
+Planned support for [no_std]
+```
+
+#### `⤷` Current Performance
+```
 Iterates over an entire 7MB database file containing 100K entries
 while only utilizing 1KB on the heap and takes 58ms (0.58μs per entry)
 using a cache size of 512 bytes.
