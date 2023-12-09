@@ -7,6 +7,7 @@ mod serializer;
 mod stream;
 mod structures;
 mod utils;
+mod file;
 
 extern crate alloc;
 use alloc::collections::BTreeSet;

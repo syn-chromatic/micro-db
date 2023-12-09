@@ -9,6 +9,7 @@ use stream::DBFileStream;
 
 use core::fmt::Debug;
 use core::hash;
+use std::io;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -65,4 +66,13 @@ where
         }
         None
     }
+}
+
+pub trait FileTrait {
+    fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), io::Error>;
+    fn write(&mut self, buffer: &[u8]) -> Result<usize, io::Error>;
+    fn write_all(&mut self, buffer: &[u8]) -> Result<(), io::Error>;
+    fn seek(&mut self, position: usize) -> Result<usize, io::Error>;
+    fn stream_position(&mut self) -> Result<usize, io::Error>;
+    fn set_len(&self, size: usize) -> Result<(), io::Error>;
 }

@@ -1,9 +1,8 @@
+use crate::structures::FileTrait;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
-use std::fs::File;
 use std::io;
-use std::io::prelude::*;
 
 pub struct Position<const N: usize> {
     start: usize,
@@ -101,14 +100,14 @@ impl<const N: usize> DBStreamCache<N> {
 }
 
 pub struct DBFileStream<const N: usize> {
-    file: File,
+    file: Box<dyn FileTrait>,
     cache: DBStreamCache<N>,
 }
 
 impl<const N: usize> DBFileStream<N> {
     fn update_cache(&mut self) -> Result<(), io::Error> {
         if !self.cache.is_ready() {
-            let st_position: u64 = self.file.stream_position()?;
+            let st_position = self.file.stream_position()?;
             for _ in self.into_iter() {
                 break;
             }
@@ -117,16 +116,16 @@ impl<const N: usize> DBFileStream<N> {
         Ok(())
     }
 
-    fn seek_from_start(&mut self, start: u64) -> Result<(), io::Error> {
-        let cache_st: u64 = self.cache.position.start as u64;
-        let cache_en: u64 = self.cache.position.end as u64;
+    fn seek_from_start(&mut self, start: usize) -> Result<(), io::Error> {
+        let cache_st: usize = self.cache.position.start;
+        let cache_en: usize = self.cache.position.end;
 
         if cache_st <= start && cache_en > start {
-            let offset: u64 = start - cache_st;
-            self.cache.seek_from_offset(offset as usize);
+            let offset: usize = start - cache_st;
+            self.cache.seek_from_offset(offset);
         }
 
-        self.file.seek(io::SeekFrom::Start(start))?;
+        self.file.seek(start)?;
         Ok(())
     }
 
@@ -135,7 +134,11 @@ impl<const N: usize> DBFileStream<N> {
         Ok(())
     }
 
-    fn rebuild_database(&mut self, st_pos1: &mut u64, en_pos1: &mut u64) -> Result<(), io::Error> {
+    fn rebuild_database(
+        &mut self,
+        st_pos1: &mut usize,
+        en_pos1: &mut usize,
+    ) -> Result<(), io::Error> {
         loop {
             let current_chunk: Vec<u8> = self.next_chunk()?;
             let current_uid: &[u8] = &current_chunk[..BLOCK_SIZE];
@@ -165,12 +168,12 @@ impl<const N: usize> DBFileStream<N> {
 }
 
 impl<const N: usize> DBFileStream<N> {
-    pub fn new(file: File) -> Self {
+    pub fn new(file: Box<dyn FileTrait>) -> Self {
         let cache: DBStreamCache<N> = DBStreamCache::new();
         DBFileStream { file, cache }
     }
 
-    pub fn get_chunk_bounds(&mut self) -> Result<(u64, u64), io::Error> {
+    pub fn get_chunk_bounds(&mut self) -> Result<(usize, usize), io::Error> {
         self.update_cache()?;
         let cache_st: usize = self.cache.offset + self.cache.position.start;
         for block in self.into_iter() {
@@ -184,8 +187,8 @@ impl<const N: usize> DBFileStream<N> {
         }
 
         let cache_en: usize = self.cache.offset + self.cache.position.start;
-        self.seek_from_start(cache_st as u64)?;
-        Ok((cache_st as u64, cache_en as u64))
+        self.seek_from_start(cache_st)?;
+        Ok((cache_st, cache_en))
     }
 
     pub fn append_end(&mut self, data: &[u8]) {

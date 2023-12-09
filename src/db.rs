@@ -69,7 +69,7 @@ where
 
     pub fn get_iterator(&self) -> DBIterator<'_, T> {
         let file: File = File::open(&self.path).unwrap();
-        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
+        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let iterator: DBIterator<'_, T> = DBIterator::new(db_stream, db_serializer);
@@ -111,7 +111,7 @@ where
             .open(&self.path)
             .unwrap();
 
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
@@ -129,7 +129,7 @@ where
             .open(&self.path)
             .unwrap();
 
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
@@ -146,7 +146,7 @@ where
             .open(&self.path)
             .unwrap();
 
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
         for _ in 0..uid {
             db_stream.next_chunk()?;
         }
