@@ -10,7 +10,7 @@ use std::io::SeekFrom;
 
 impl FileTrait for File {
     fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), DBError> {
-        let result = <Self as Read>::read_exact(self, buffer);
+        let result: Result<(), Error> = <Self as Read>::read_exact(self, buffer);
         if result.is_ok() {
             return Ok(());
         }
@@ -20,7 +20,7 @@ impl FileTrait for File {
     }
 
     fn write(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
-        let result = <Self as Write>::write(self, buffer);
+        let result: Result<usize, Error> = <Self as Write>::write(self, buffer);
         if let Ok(result) = result {
             return Ok(result);
         }
@@ -30,7 +30,7 @@ impl FileTrait for File {
     }
 
     fn write_all(&mut self, buffer: &[u8]) -> Result<(), DBError> {
-        let result = <Self as Write>::write_all(self, buffer);
+        let result: Result<(), Error> = <Self as Write>::write_all(self, buffer);
         if result.is_ok() {
             return Ok(());
         }
@@ -60,7 +60,7 @@ impl FileTrait for File {
     }
 
     fn set_len(&self, size: usize) -> Result<(), DBError> {
-        let result = self.set_len(size as u64);
+        let result: Result<(), Error> = self.set_len(size as u64);
         if result.is_ok() {
             return Ok(());
         }
