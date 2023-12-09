@@ -24,7 +24,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 const BLOCK_SIZE: usize = 4;
-const CACHE_SIZE: usize = 512;
+const CACHE_SIZE: usize = 2048;
 const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC];
 
 #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
@@ -41,7 +41,7 @@ fn write_items_at_once(path: &path::PathBuf) {
 
     let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
 
-    for idx in 0..10_000 {
+    for idx in 0..100_000 + 1 {
         let my_struct = ExampleStruct {
             uid: idx as u128,
             start_t: [idx, idx],
@@ -180,7 +180,7 @@ pub fn refresh_database(path: &path::PathBuf) {
 fn main() {
     let path = path::PathBuf::from("C:/Users/shady/Desktop/micro-db/database.mdb");
     refresh_database(&path);
-    write_items_at_once(&path);
+    // write_items_at_once(&path);
     // write_per_item(&path);
     // find_entry_test(&path);
     // get_entry_test(&path);

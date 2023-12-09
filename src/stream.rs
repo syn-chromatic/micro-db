@@ -124,8 +124,6 @@ impl<const N: usize> DBFileStream<N> {
         if cache_st <= start && cache_en > start {
             let offset: u64 = start - cache_st;
             self.cache.seek_from_offset(offset as usize);
-        } else {
-            self.cache.clear();
         }
 
         self.file.seek(io::SeekFrom::Start(start))?;
