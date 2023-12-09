@@ -10,7 +10,9 @@ use core::fmt::Debug;
 use core::hash;
 use core::marker::PhantomData;
 
-use bincode;
+use bincode::deserialize;
+use bincode::serialize;
+use bincode::ErrorKind;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -29,7 +31,7 @@ where
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
     fn bincode_serialize(&self, item: &T::Item) -> Result<Vec<u8>, DBError> {
-        let bytes = bincode::serialize(item);
+        let bytes: Result<Vec<u8>, Box<ErrorKind>> = serialize(item);
         if let Ok(bytes) = bytes {
             return Ok(bytes);
         }
@@ -37,7 +39,7 @@ where
     }
 
     fn bincode_deserialize(&self, bytes: &[u8]) -> Result<T::Item, DBError> {
-        let item: Result<T::Item, Box<bincode::ErrorKind>> = bincode::deserialize(bytes);
+        let item: Result<T::Item, Box<ErrorKind>> = deserialize(bytes);
         if let Ok(item) = item {
             return Ok(item);
         }
@@ -57,7 +59,7 @@ where
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
     pub fn new() -> Self {
-        let _marker = PhantomData;
+        let _marker: PhantomData<&T> = PhantomData;
         Self { _marker }
     }
 
@@ -144,7 +146,7 @@ where
     }
 
     pub fn serialize_uid(&self, uid: u32) -> Result<Vec<u8>, DBError> {
-        let bytes: Result<Vec<u8>, Box<bincode::ErrorKind>> = bincode::serialize(&uid);
+        let bytes: Result<Vec<u8>, Box<ErrorKind>> = serialize(&uid);
         if let Ok(mut bytes) = bytes {
             bytes.resize(BLOCK_SIZE, 0);
             return Ok(bytes);
@@ -153,7 +155,7 @@ where
     }
 
     pub fn deserialize_uid(&self, buffer: &[u8]) -> Result<u32, DBError> {
-        let uid: Result<u32, Box<bincode::ErrorKind>> = bincode::deserialize(buffer);
+        let uid: Result<u32, Box<ErrorKind>> = deserialize(buffer);
         if let Ok(uid) = uid {
             return Ok(uid);
         }
