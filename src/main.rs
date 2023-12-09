@@ -1,14 +1,3 @@
-// #[global_allocator]
-// static ALLOCATOR: emballoc::Allocator<20_000> = emballoc::Allocator::new();
-
-mod db;
-mod error;
-mod file;
-mod serializer;
-mod stream;
-mod structures;
-mod utils;
-
 extern crate alloc;
 use alloc::collections::BTreeSet;
 
@@ -16,17 +5,16 @@ use std::path;
 use std::time::Duration;
 use std::time::Instant;
 
-use db::Database;
-use error::DBError;
-use structures::DBEntry;
-use structures::DBIterator;
+use micro_db::db::Database;
+use micro_db::error::DBError;
+use micro_db::structures::DBEntry;
+use micro_db::structures::DBIterator;
 
 use serde::Deserialize;
 use serde::Serialize;
 
-const BLOCK_SIZE: usize = 4;
-const CACHE_SIZE: usize = 2048;
-const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC];
+// #[global_allocator]
+// static ALLOCATOR: emballoc::Allocator<20_000> = emballoc::Allocator::new();
 
 #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 struct ExampleStruct {
