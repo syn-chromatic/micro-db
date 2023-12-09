@@ -5,15 +5,37 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
+pub struct Position<const N: usize> {
+    start: usize,
+    end: usize,
+}
+
+impl<const N: usize> Position<N> {
+    pub fn new() -> Self {
+        let start: usize = 0;
+        let end: usize = 0;
+        Self { start, end }
+    }
+
+    pub fn set_start(&mut self, start: usize) {
+        self.start = start;
+    }
+
+    pub fn set_end(&mut self, end: usize) {
+        self.end = end;
+    }
+}
+
 pub struct DBStreamCache<const N: usize> {
     ready: bool,
     offset: usize,
+    position: Position<N>,
     cache: [u8; N],
 }
 
 impl<const N: usize> DBStreamCache<N> {
     fn get_segment_bounds(&self) -> (usize, usize) {
-        let head: usize = self.offset * BLOCK_SIZE;
+        let head: usize = self.offset;
         let tail: usize = head + BLOCK_SIZE;
         (head, tail)
     }
@@ -21,9 +43,9 @@ impl<const N: usize> DBStreamCache<N> {
     fn update_offset(&mut self, tail: usize) {
         if tail == N {
             self.ready = false;
-            self.offset = 0;
+            self.offset += BLOCK_SIZE;
         } else {
-            self.offset += 1;
+            self.offset += BLOCK_SIZE;
         }
     }
 }
@@ -31,11 +53,13 @@ impl<const N: usize> DBStreamCache<N> {
 impl<const N: usize> DBStreamCache<N> {
     pub fn new() -> Self {
         let ready: bool = false;
-        let chunk_idx: usize = 0;
+        let offset: usize = 0;
+        let position: Position<N> = Position::new();
         let cache: [u8; N] = [0; N];
         Self {
             ready,
-            offset: chunk_idx,
+            offset,
+            position,
             cache,
         }
     }
@@ -44,13 +68,8 @@ impl<const N: usize> DBStreamCache<N> {
         self.ready
     }
 
-    pub fn set_cache(&mut self, cache: [u8; N]) {
-        self.cache = cache;
-        self.ready = true;
-    }
-
-    pub fn clear(&mut self) {
-        self.ready = false;
+    pub fn seek_from_offset(&mut self, offset: usize) {
+        self.offset = offset;
     }
 
     pub fn get_chunk(&mut self) -> [u8; BLOCK_SIZE] {
@@ -66,6 +85,19 @@ impl<const N: usize> DBStreamCache<N> {
         self.update_offset(tail);
         chunk
     }
+
+    pub fn set_cache(&mut self, cache: [u8; N], start: usize, end: usize) {
+        self.cache = cache;
+        self.ready = true;
+        self.offset = 0;
+
+        self.position.set_start(start);
+        self.position.set_end(end);
+    }
+
+    pub fn clear(&mut self) {
+        self.ready = false;
+    }
 }
 
 pub struct DBFileStream<const N: usize> {
@@ -74,9 +106,39 @@ pub struct DBFileStream<const N: usize> {
 }
 
 impl<const N: usize> DBFileStream<N> {
-    fn iterative_remove(&mut self, st_pos1: &mut u64, en_pos1: &mut u64) -> Result<(), io::Error> {
+    fn update_cache(&mut self) -> Result<(), io::Error> {
+        if !self.cache.is_ready() {
+            let st_position: u64 = self.file.stream_position()?;
+            for _ in self.into_iter() {
+                break;
+            }
+            self.seek_from_start(st_position)?;
+        }
+        Ok(())
+    }
+
+    fn seek_from_start(&mut self, start: u64) -> Result<(), io::Error> {
+        let cache_st: u64 = self.cache.position.start as u64;
+        let cache_en: u64 = self.cache.position.end as u64;
+
+        if cache_st <= start && cache_en > start {
+            let offset: u64 = start - cache_st;
+            self.cache.seek_from_offset(offset as usize);
+        } else {
+            self.cache.clear();
+        }
+
+        self.file.seek(io::SeekFrom::Start(start))?;
+        Ok(())
+    }
+
+    fn write(&mut self, buffer: &[u8]) -> Result<(), io::Error> {
+        self.file.write(buffer)?;
+        Ok(())
+    }
+
+    fn rebuild_database(&mut self, st_pos1: &mut u64, en_pos1: &mut u64) -> Result<(), io::Error> {
         loop {
-            // Get current chunk
             let current_chunk: Vec<u8> = self.next_chunk()?;
             let current_uid: &[u8] = &current_chunk[..BLOCK_SIZE];
 
@@ -90,19 +152,17 @@ impl<const N: usize> DBFileStream<N> {
             next_chunk[..BLOCK_SIZE].copy_from_slice(current_uid);
 
             // Seek to current chunk start
-            self.file.seek(io::SeekFrom::Start(*st_pos1))?;
+            self.seek_from_start(*st_pos1)?;
 
             // Overwrite next chunk data
-            self.file.write(&next_chunk)?;
+            self.write(&next_chunk)?;
 
             // Seek to the end of current chunk
-            self.file.seek(io::SeekFrom::Start(*en_pos1))?;
+            self.seek_from_start(*en_pos1)?;
 
             *st_pos1 = st_pos2;
             *en_pos1 = en_pos2;
         }
-
-        Ok(())
     }
 }
 
@@ -113,12 +173,9 @@ impl<const N: usize> DBFileStream<N> {
     }
 
     pub fn get_chunk_bounds(&mut self) -> Result<(u64, u64), io::Error> {
-        let st_position: u64 = self.file.stream_position()?;
-
-        let mut en_position: u64 = st_position;
-
+        self.update_cache()?;
+        let cache_st: usize = self.cache.offset + self.cache.position.start;
         for block in self.into_iter() {
-            en_position += BLOCK_SIZE as u64;
             if let Ok(block) = block {
                 if block == EOE_BLOCK {
                     break;
@@ -127,8 +184,10 @@ impl<const N: usize> DBFileStream<N> {
             }
             return Err(io::ErrorKind::InvalidData.into());
         }
-        self.file.seek(io::SeekFrom::Start(st_position))?;
-        Ok((st_position, en_position))
+
+        let cache_en: usize = self.cache.offset + self.cache.position.start;
+        self.seek_from_start(cache_st as u64)?;
+        Ok((cache_st as u64, cache_en as u64))
     }
 
     pub fn append_end(&mut self, data: &[u8]) {
@@ -155,14 +214,14 @@ impl<const N: usize> DBFileStream<N> {
                 }
                 continue;
             }
-            return Err(io::ErrorKind::InvalidData.into());
+            return Err(io::ErrorKind::Unsupported.into());
         }
-        Err(io::ErrorKind::InvalidData.into())
+        Err(io::ErrorKind::AlreadyExists.into())
     }
 
     pub fn remove_chunk(&mut self) -> Result<(), io::Error> {
         let (mut st_pos1, mut en_pos1) = self.get_chunk_bounds()?;
-        let _ = self.iterative_remove(&mut st_pos1, &mut en_pos1);
+        self.rebuild_database(&mut st_pos1, &mut en_pos1)?;
         self.file.set_len(st_pos1)?;
         Ok(())
     }
@@ -177,17 +236,22 @@ impl<const N: usize> Iterator for DBFileStream<N> {
             return Some(Ok(bytes));
         }
 
-        let mut buffer: [u8; N] = [0; N];
+        if let Ok(start) = self.file.stream_position() {
+            let start: usize = start as usize;
+            let end: usize = start + N;
 
-        let result: Result<(), io::Error> = self.file.read_exact(&mut buffer);
-        if let Err(error) = result {
-            if buffer.iter().all(|&x| x == 0) {
-                return Some(Err(error));
+            let mut buffer: [u8; N] = [0; N];
+            let result: Result<(), io::Error> = self.file.read_exact(&mut buffer);
+            if let Err(error) = result {
+                if buffer.iter().all(|&x| x == 0) {
+                    return Some(Err(error));
+                }
             }
-        }
 
-        self.cache.set_cache(buffer);
-        let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
-        return Some(Ok(bytes));
+            self.cache.set_cache(buffer, start, end);
+            let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
+            return Some(Ok(bytes));
+        }
+        None
     }
 }

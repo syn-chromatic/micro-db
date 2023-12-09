@@ -146,7 +146,7 @@ where
             .open(&self.path)
             .unwrap();
 
-        let mut db_stream: DBFileStream<BLOCK_SIZE> = DBFileStream::new(file);
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         for _ in 0..uid {
             db_stream.next_chunk()?;
         }

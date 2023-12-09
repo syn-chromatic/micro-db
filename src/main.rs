@@ -1,11 +1,12 @@
-#[global_allocator]
-static ALLOCATOR: emballoc::Allocator<20_000> = emballoc::Allocator::new();
+// #[global_allocator]
+// static ALLOCATOR: emballoc::Allocator<20_000> = emballoc::Allocator::new();
 
 mod db;
 mod error;
 mod serializer;
 mod stream;
 mod structures;
+mod utils;
 
 extern crate alloc;
 use alloc::collections::BTreeSet;
@@ -15,15 +16,15 @@ use std::time::Duration;
 use std::time::Instant;
 
 use db::Database;
+use error::DBError;
+use structures::DBEntry;
+use structures::DBIterator;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 const BLOCK_SIZE: usize = 4;
 const CACHE_SIZE: usize = 512;
-// const EOE_BLOCK: [u8; BLOCK_SIZE] = [
-//     0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6, 0xF5, 0xF4, 0xF3, 0xF2, 0xF1, 0xF0,
-// ];
-// const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8];
 const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC];
 
 #[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
@@ -34,7 +35,8 @@ struct ExampleStruct {
     week: [bool; 7],
 }
 
-fn write_items(path: &path::PathBuf) {
+fn write_items_at_once(path: &path::PathBuf) {
+    println!("\n[WRITE ITEMS AT ONCE]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
     let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
@@ -51,13 +53,15 @@ fn write_items(path: &path::PathBuf) {
     }
 
     db.add_items(items);
+    println!();
 }
 
-fn write_item(path: &path::PathBuf) {
+fn write_per_item(path: &path::PathBuf) {
+    println!("\n[WRITE PER ITEM]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
     for idx in 0..100_000 {
-        let my_struct = ExampleStruct {
+        let my_struct: ExampleStruct = ExampleStruct {
             uid: idx as u128,
             start_t: [idx, idx],
             end_t: [idx, idx],
@@ -66,37 +70,41 @@ fn write_item(path: &path::PathBuf) {
         db.add_item(&my_struct);
         print!("Idx: {}     \r", idx);
     }
+    println!();
 }
 
-fn find_item(path: &path::PathBuf) {
+fn find_entry_test(path: &path::PathBuf) {
+    println!("\n[FIND ENTRY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
-    let idx = 49_000;
-    let my_struct = ExampleStruct {
+    let idx: usize = 49_000;
+    let my_struct: ExampleStruct = ExampleStruct {
         uid: idx as u128,
         start_t: [idx, idx],
         end_t: [idx, idx],
         week: [true; 7],
     };
 
-    let time = Instant::now();
+    let time: Instant = Instant::now();
     println!("Contains: {}", db.contains(&my_struct));
-    let taken = time.elapsed();
+    let taken: Duration = time.elapsed();
     println!("Taken: {}ms", taken.as_millis());
 }
 
-fn get_entry(path: &path::PathBuf) {
+fn get_entry_test(path: &path::PathBuf) {
+    println!("\n[GET ENTRY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
-    let time = Instant::now();
-    let item = db.get_entry(49_000);
-    let taken = time.elapsed();
+    let time: Instant = Instant::now();
+    let item: Result<DBEntry<ExampleStruct>, DBError> = db.get_entry(49_000);
+    let taken: Duration = time.elapsed();
     println!("Taken: {}ms", taken.as_millis());
     println!("Item: {:?}", item);
 }
 
 fn database_benchmark(path: &path::PathBuf) {
+    println!("\n[DATABASE BENCHMARK]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
-    let db_iterator = db.get_iterator();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.get_iterator();
 
     let mut uid: u32 = 0;
     let instant: Instant = Instant::now();
@@ -114,9 +122,10 @@ fn database_benchmark(path: &path::PathBuf) {
     );
 }
 
-fn test_database_integrity(path: &path::PathBuf) {
+fn database_integrity_test(path: &path::PathBuf) {
+    println!("\n[DATABASE INTEGRITY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
-    let db_iterator = db.get_iterator();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.get_iterator();
     let mut uid: u32 = 0;
 
     for entry in db_iterator.into_iter() {
@@ -136,25 +145,24 @@ fn test_database_integrity(path: &path::PathBuf) {
             }
         }
     }
-    println!("\nDATABASE INTEGRITY SUCCESS");
+    println!("DATABASE INTEGRITY SUCCESS");
 }
 
-pub fn test_remove(path: &path::PathBuf) {
+pub fn remove_test(path: &path::PathBuf) {
+    println!("\n[REMOVE TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
-    for _ in 0..100 {
-        let uid: u32 = 0;
-        let instant: Instant = Instant::now();
-        let result = db.remove_entry(uid);
-        let taken: Duration = instant.elapsed();
-        println!("Taken: {}ms", taken.as_millis(),);
-        println!("Remove Result: {:?}", result);
-    }
+    let uid: u32 = 2;
+    let instant: Instant = Instant::now();
+    let _ = db.remove_entry(uid);
+    let taken: Duration = instant.elapsed();
+    println!("Taken: {}ms", taken.as_millis());
 }
 
 pub fn print_database(path: &path::PathBuf) {
+    println!("\n[PRINT DATABASE]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
-    let db_iterator = db.get_iterator();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.get_iterator();
 
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {
@@ -164,24 +172,21 @@ pub fn print_database(path: &path::PathBuf) {
 }
 
 pub fn refresh_database(path: &path::PathBuf) {
+    println!("\n[REFRESH DATABASE]");
     let _ = std::fs::remove_file(path);
-    write_items(path);
+    write_items_at_once(path);
 }
 
 fn main() {
-    println!("\n\n\n");
     let path = path::PathBuf::from("C:/Users/shady/Desktop/micro-db/database.mdb");
-    // refresh_database(&path);
-    write_items(&path);
-    // write_item(&path);
-    // find_item(&path);
-    // get_entry(&path);
+    refresh_database(&path);
+    write_items_at_once(&path);
+    // write_per_item(&path);
+    // find_entry_test(&path);
+    // get_entry_test(&path);
 
-    test_database_integrity(&path);
     database_benchmark(&path);
-    test_remove(&path);
+    remove_test(&path);
     // print_database(&path);
-    test_database_integrity(&path);
-
-    println!("\n\n\n");
+    database_integrity_test(&path);
 }
