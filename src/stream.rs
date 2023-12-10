@@ -106,11 +106,23 @@ pub struct DBFileStream<const N: usize> {
 impl<const N: usize> DBFileStream<N> {
     fn update_cache(&mut self) -> Result<(), DBError> {
         if !self.cache.is_ready() {
-            let st_position = self.file.stream_position()?;
-            for _ in self.into_iter() {
-                break;
+            let stream_position: Result<usize, DBError> = self.file.stream_position();
+            if let Ok(start) = stream_position {
+                let start: usize = start as usize;
+                let end: usize = start + N;
+
+                let mut buffer: [u8; N] = [0; N];
+                let result: Result<(), DBError> = self.file.read_exact(&mut buffer);
+                if let Err(error) = result {
+                    if buffer.iter().all(|&x| x == 0) {
+                        return Err(error);
+                    }
+                }
+
+                self.cache.set_cache(buffer, start, end);
+                return Ok(());
             }
-            self.seek_from_start(st_position)?;
+            return Err(stream_position.unwrap_err());
         }
         Ok(())
     }
@@ -122,8 +134,6 @@ impl<const N: usize> DBFileStream<N> {
         if cache_st <= start && cache_en > start {
             let offset: usize = start - cache_st;
             self.cache.seek_from_offset(offset);
-        } else {
-            self.cache.set_ready(false);
         }
 
         self.file.seek(start)?;
@@ -238,22 +248,12 @@ impl<const N: usize> Iterator for DBFileStream<N> {
             return Some(Ok(bytes));
         }
 
-        if let Ok(start) = self.file.stream_position() {
-            let start: usize = start as usize;
-            let end: usize = start + N;
-
-            let mut buffer: [u8; N] = [0; N];
-            let result: Result<(), DBError> = self.file.read_exact(&mut buffer);
-            if let Err(error) = result {
-                if buffer.iter().all(|&x| x == 0) {
-                    return Some(Err(error));
-                }
-            }
-
-            self.cache.set_cache(buffer, start, end);
-            let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
-            return Some(Ok(bytes));
+        let result: Result<(), DBError> = self.update_cache();
+        if let Err(error) = result {
+            return Some(Err(error));
         }
-        None
+
+        let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
+        return Some(Ok(bytes));
     }
 }
