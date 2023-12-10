@@ -103,7 +103,7 @@ where
         false
     }
 
-    pub fn add_item(&self, item: &T::Item) {
+    pub fn add_entry(&self, item: &T::Item) {
         let file: File = OpenOptions::new()
             .read(true)
             .write(true)
@@ -121,7 +121,7 @@ where
         db_stream.append_end(&data);
     }
 
-    pub fn add_items(&self, items: BTreeSet<T::Item>) {
+    pub fn add_entries(&self, items: BTreeSet<T::Item>) {
         let file: File = OpenOptions::new()
             .read(true)
             .write(true)

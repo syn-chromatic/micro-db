@@ -24,7 +24,7 @@ struct ExampleStruct {
     week: [bool; 7],
 }
 
-fn write_items_at_once(path: &path::PathBuf) {
+fn write_entries_at_once(path: &path::PathBuf) {
     println!("\n[WRITE ITEMS AT ONCE]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
@@ -41,11 +41,11 @@ fn write_items_at_once(path: &path::PathBuf) {
         print!("Idx: {}    \r", idx);
     }
 
-    db.add_items(items);
+    db.add_entries(items);
     println!();
 }
 
-fn write_per_item(path: &path::PathBuf) {
+fn write_per_entry(path: &path::PathBuf) {
     println!("\n[WRITE PER ITEM]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
@@ -56,7 +56,7 @@ fn write_per_item(path: &path::PathBuf) {
             end_t: [idx, idx],
             week: [true; 7],
         };
-        db.add_item(&my_struct);
+        db.add_entry(&my_struct);
         print!("Idx: {}     \r", idx);
     }
     println!();
@@ -66,7 +66,7 @@ fn find_entry_test(path: &path::PathBuf) {
     println!("\n[FIND ENTRY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
-    let idx: usize = 49_000;
+    let idx: usize = 1000;
     let my_struct: ExampleStruct = ExampleStruct {
         uid: idx as u128,
         start_t: [idx, idx],
@@ -163,14 +163,14 @@ pub fn print_database(path: &path::PathBuf) {
 pub fn refresh_database(path: &path::PathBuf) {
     println!("\n[REFRESH DATABASE]");
     let _ = std::fs::remove_file(path);
-    write_items_at_once(path);
+    write_entries_at_once(path);
 }
 
 fn main() {
     let path = path::PathBuf::from("C:/Users/shady/Desktop/micro-db/database.mdb");
     refresh_database(&path);
-    // write_items_at_once(&path);
-    // write_per_item(&path);
+    // write_entries_at_once(&path);
+    // write_per_entry(&path);
     // find_entry_test(&path);
     // get_entry_test(&path);
 
