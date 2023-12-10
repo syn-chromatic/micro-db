@@ -2,6 +2,7 @@ use crate::error;
 use crate::serializer;
 use crate::stream;
 use crate::structures;
+use crate::traits;
 use crate::BLOCK_SIZE;
 use crate::CACHE_SIZE;
 
@@ -14,13 +15,14 @@ use core::marker::PhantomData;
 
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::path::PathBuf;
 
 use error::DBError;
 use serializer::DBSerializer;
 use stream::DBFileStream;
 use structures::DBEntry;
 use structures::DBIterator;
+use traits::FileTrait;
+use traits::PathBufBox;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -30,7 +32,7 @@ where
     T: IntoIterator + Eq,
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    pub path: PathBuf,
+    pub path: PathBufBox,
     pub strict_dupes: bool,
     pub _marker: PhantomData<&'a T>,
 }
@@ -59,9 +61,10 @@ where
     T: IntoIterator + Eq,
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    pub fn new(path: impl Into<PathBuf>, strict_dupes: bool) -> Self {
+    pub fn new(path: &PathBufBox, strict_dupes: bool) -> Self {
+        let path: PathBufBox = path.clone_box();
         Database {
-            path: path.into(),
+            path,
             strict_dupes,
             _marker: PhantomData,
         }
@@ -99,8 +102,8 @@ where
     }
 
     pub fn iterator(&self) -> DBIterator<'_, T> {
-        let file: File = File::open(&self.path).unwrap();
-        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
+        let file: Box<dyn FileTrait> = Box::new(File::open(self.path.as_str()).unwrap());
+        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let iterator: DBIterator<'_, T> = DBIterator::new(db_stream, db_serializer);
@@ -122,13 +125,15 @@ where
     }
 
     pub fn remove_by_uid(&self, uid: u32) -> Result<(), DBError> {
-        let file: File = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&self.path)
-            .unwrap();
+        let file: Box<dyn FileTrait> = Box::new(
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(self.path.as_str())
+                .unwrap(),
+        );
 
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         for _ in 0..uid {
             db_stream.next_chunk()?;
         }
@@ -138,14 +143,16 @@ where
     }
 
     pub fn add_entry(&self, item: &T::Item) {
-        let file: File = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&self.path)
-            .unwrap();
+        let file: Box<dyn FileTrait> = Box::new(
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(self.path.as_str())
+                .unwrap(),
+        );
 
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
@@ -156,14 +163,16 @@ where
     }
 
     pub fn add_entries(&self, items: BTreeSet<T::Item>) {
-        let file: File = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&self.path)
-            .unwrap();
+        let file: Box<dyn FileTrait> = Box::new(
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(self.path.as_str())
+                .unwrap(),
+        );
 
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();

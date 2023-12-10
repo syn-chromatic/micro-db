@@ -1,7 +1,7 @@
 extern crate alloc;
 use alloc::collections::BTreeSet;
 
-use std::path;
+// use std::path;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -9,6 +9,8 @@ use crate::db::Database;
 use crate::error::DBError;
 use crate::structures::DBEntry;
 use crate::structures::DBIterator;
+use crate::traits::PathBufBox;
+use crate::traits::PathBufTrait;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -21,7 +23,7 @@ struct ExampleStruct {
     week: [bool; 7],
 }
 
-pub fn write_entries_at_once(path: &path::PathBuf) {
+pub fn write_entries_at_once(path: &PathBufBox) {
     println!("\n[WRITE ENTRIES AT ONCE]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
@@ -42,7 +44,7 @@ pub fn write_entries_at_once(path: &path::PathBuf) {
     println!();
 }
 
-pub fn write_per_entry(path: &path::PathBuf) {
+pub fn write_per_entry(path: &PathBufBox) {
     println!("\n[WRITE PER ENTRY]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
@@ -59,7 +61,7 @@ pub fn write_per_entry(path: &path::PathBuf) {
     println!();
 }
 
-pub fn find_entry_test(path: &path::PathBuf) {
+pub fn find_entry_test(path: &PathBufBox) {
     println!("\n[FIND ENTRY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
@@ -77,7 +79,7 @@ pub fn find_entry_test(path: &path::PathBuf) {
     println!("Taken: {}ms", taken.as_millis());
 }
 
-pub fn get_entry_test(path: &path::PathBuf) {
+pub fn get_entry_test(path: &PathBufBox) {
     println!("\n[GET ENTRY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let time: Instant = Instant::now();
@@ -87,7 +89,7 @@ pub fn get_entry_test(path: &path::PathBuf) {
     println!("Entry: {:?}", entry);
 }
 
-pub fn database_benchmark(path: &path::PathBuf) {
+pub fn database_benchmark(path: &PathBufBox) {
     println!("\n[DATABASE BENCHMARK]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
@@ -108,7 +110,7 @@ pub fn database_benchmark(path: &path::PathBuf) {
     );
 }
 
-pub fn database_integrity_test(path: &path::PathBuf) {
+pub fn database_integrity_test(path: &PathBufBox) {
     println!("\n[DATABASE INTEGRITY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
@@ -134,7 +136,7 @@ pub fn database_integrity_test(path: &path::PathBuf) {
     println!("DATABASE INTEGRITY SUCCESS");
 }
 
-pub fn remove_test(path: &path::PathBuf) {
+pub fn remove_test(path: &PathBufBox) {
     println!("\n[REMOVE TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
@@ -145,7 +147,7 @@ pub fn remove_test(path: &path::PathBuf) {
     println!("Taken: {}ms", taken.as_millis());
 }
 
-pub fn query_test(path: &path::PathBuf) {
+pub fn query_test(path: &PathBufBox) {
     println!("\n[QUERY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
@@ -154,7 +156,7 @@ pub fn query_test(path: &path::PathBuf) {
     println!("Result: {:?}", result);
 }
 
-pub fn print_database(path: &path::PathBuf) {
+pub fn print_database(path: &PathBufBox) {
     println!("\n[PRINT DATABASE]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
@@ -166,8 +168,8 @@ pub fn print_database(path: &path::PathBuf) {
     }
 }
 
-pub fn refresh_database(path: &path::PathBuf) {
+pub fn refresh_database(path: &PathBufBox) {
     println!("\n[REFRESH DATABASE]");
-    let _ = std::fs::remove_file(path);
+    let _ = std::fs::remove_file(path.as_str());
     write_entries_at_once(path);
 }

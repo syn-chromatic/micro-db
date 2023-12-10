@@ -1,5 +1,5 @@
 use crate::error::DBError;
-use crate::structures::FileTrait;
+use crate::traits::FileTrait;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
