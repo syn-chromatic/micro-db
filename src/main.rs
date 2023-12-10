@@ -3,7 +3,7 @@ use micro_db::tests::*;
 use micro_db::traits::PathBufBox;
 
 fn main() {
-    let path: PathBufBox = PathBuf::new("C:/Users/shady/Desktop/micro-db/database.mdb");
+    let path: PathBufBox = PathBuf::new("./database.mdb");
     refresh_database(&path);
     // write_entries_at_once(&path);
     // write_per_entry(&path);
