@@ -66,8 +66,17 @@ impl<const N: usize> DBStreamCache<N> {
         self.ready
     }
 
-    pub fn seek_from_offset(&mut self, offset: usize) {
-        self.offset = offset;
+    pub fn set_ready(&mut self, status: bool) {
+        self.ready = status;
+    }
+
+    pub fn set_cache(&mut self, cache: [u8; N], start: usize, end: usize) {
+        self.ready = true;
+        self.offset = 0;
+        self.cache = cache;
+
+        self.position.set_start(start);
+        self.position.set_end(end);
     }
 
     pub fn get_chunk(&mut self) -> [u8; BLOCK_SIZE] {
@@ -84,17 +93,8 @@ impl<const N: usize> DBStreamCache<N> {
         chunk
     }
 
-    pub fn set_cache(&mut self, cache: [u8; N], start: usize, end: usize) {
-        self.cache = cache;
-        self.ready = true;
-        self.offset = 0;
-
-        self.position.set_start(start);
-        self.position.set_end(end);
-    }
-
-    pub fn clear(&mut self) {
-        self.ready = false;
+    pub fn seek_from_offset(&mut self, offset: usize) {
+        self.offset = offset;
     }
 }
 
@@ -122,6 +122,8 @@ impl<const N: usize> DBFileStream<N> {
         if cache_st <= start && cache_en > start {
             let offset: usize = start - cache_st;
             self.cache.seek_from_offset(offset);
+        } else {
+            self.cache.set_ready(false);
         }
 
         self.file.seek(start)?;
