@@ -204,7 +204,7 @@ impl<const N: usize> DBFileStream<N> {
 
     pub fn append_end(&mut self, data: &[u8]) {
         while let Ok(_) = self.next_chunk() {}
-        self.file.write_all(data).unwrap();
+        self.file.write(data).unwrap();
     }
 
     pub fn last_chunk(&mut self) -> Option<Vec<u8>> {
