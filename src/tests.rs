@@ -81,7 +81,7 @@ pub fn get_entry_test(path: &path::PathBuf) {
     println!("\n[GET ENTRY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
     let time: Instant = Instant::now();
-    let entry: Result<DBEntry<ExampleStruct>, DBError> = db.get_entry(49_000);
+    let entry: Result<DBEntry<ExampleStruct>, DBError> = db.get_by_uid(49_000);
     let taken: Duration = time.elapsed();
     println!("Taken: {}ms", taken.as_millis());
     println!("Entry: {:?}", entry);
@@ -90,7 +90,7 @@ pub fn get_entry_test(path: &path::PathBuf) {
 pub fn database_benchmark(path: &path::PathBuf) {
     println!("\n[DATABASE BENCHMARK]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.get_iterator();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
 
     let mut uid: u32 = 0;
     let instant: Instant = Instant::now();
@@ -111,7 +111,7 @@ pub fn database_benchmark(path: &path::PathBuf) {
 pub fn database_integrity_test(path: &path::PathBuf) {
     println!("\n[DATABASE INTEGRITY TEST]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.get_iterator();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
     let mut uid: u32 = 0;
 
     for entry in db_iterator.into_iter() {
@@ -140,7 +140,7 @@ pub fn remove_test(path: &path::PathBuf) {
 
     let uid: u32 = 2;
     let instant: Instant = Instant::now();
-    let _ = db.remove_entry(uid);
+    let _ = db.remove_by_uid(uid);
     let taken: Duration = instant.elapsed();
     println!("Taken: {}ms", taken.as_millis());
 }
@@ -157,7 +157,7 @@ pub fn query_test(path: &path::PathBuf) {
 pub fn print_database(path: &path::PathBuf) {
     println!("\n[PRINT DATABASE]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.get_iterator();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
 
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {

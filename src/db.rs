@@ -67,35 +67,12 @@ where
         }
     }
 
-    pub fn get_iterator(&self) -> DBIterator<'_, T> {
-        let file: File = File::open(&self.path).unwrap();
-        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
-        let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
-
-        let iterator: DBIterator<'_, T> = DBIterator::new(db_stream, db_serializer);
-        iterator
-    }
-
-    pub fn get_entry(&self, uid: u32) -> Result<DBEntry<T::Item>, DBError> {
-        let iterator: DBIterator<'_, T> = self.get_iterator();
-
-        for entry in iterator.into_iter() {
-            if let Ok(entry) = entry {
-                if entry.uid == uid {
-                    return Ok(entry);
-                }
-            }
-        }
-
-        Err(DBError::EntryNotFound)
-    }
-
     pub fn query<Q: PartialEq, V: Fn(&T::Item) -> &Q>(
         &self,
         value: V,
         query: Q,
     ) -> Result<DBEntry<T::Item>, DBError> {
-        let iterator: DBIterator<'_, T> = self.get_iterator();
+        let iterator: DBIterator<'_, T> = self.iterator();
 
         for entry in iterator.into_iter() {
             if let Ok(entry) = entry {
@@ -109,7 +86,7 @@ where
     }
 
     pub fn contains(&self, item: &T::Item) -> bool {
-        let iterator: DBIterator<'_, T> = self.get_iterator();
+        let iterator: DBIterator<'_, T> = self.iterator();
 
         for entry in iterator.into_iter() {
             if let Ok(entry) = entry {
@@ -119,6 +96,45 @@ where
             }
         }
         false
+    }
+
+    pub fn iterator(&self) -> DBIterator<'_, T> {
+        let file: File = File::open(&self.path).unwrap();
+        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
+        let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
+
+        let iterator: DBIterator<'_, T> = DBIterator::new(db_stream, db_serializer);
+        iterator
+    }
+
+    pub fn get_by_uid(&self, uid: u32) -> Result<DBEntry<T::Item>, DBError> {
+        let iterator: DBIterator<'_, T> = self.iterator();
+
+        for entry in iterator.into_iter() {
+            if let Ok(entry) = entry {
+                if entry.uid == uid {
+                    return Ok(entry);
+                }
+            }
+        }
+
+        Err(DBError::EntryNotFound)
+    }
+
+    pub fn remove_by_uid(&self, uid: u32) -> Result<(), DBError> {
+        let file: File = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&self.path)
+            .unwrap();
+
+        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
+        for _ in 0..uid {
+            db_stream.next_chunk()?;
+        }
+
+        db_stream.remove_chunk()?;
+        Ok(())
     }
 
     pub fn add_entry(&self, item: &T::Item) {
@@ -155,21 +171,5 @@ where
 
         let data: Vec<u8> = db_serializer.serialize_items(uid, items).unwrap();
         db_stream.append_end(&data);
-    }
-
-    pub fn remove_entry(&self, uid: u32) -> Result<(), DBError> {
-        let file: File = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&self.path)
-            .unwrap();
-
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(Box::new(file));
-        for _ in 0..uid {
-            db_stream.next_chunk()?;
-        }
-
-        db_stream.remove_chunk()?;
-        Ok(())
     }
 }
