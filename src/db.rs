@@ -90,6 +90,24 @@ where
         Err(DBError::EntryNotFound)
     }
 
+    pub fn query<Q: PartialEq, V: Fn(&T::Item) -> &Q>(
+        &self,
+        value: V,
+        query: Q,
+    ) -> Result<DBEntry<T::Item>, DBError> {
+        let iterator: DBIterator<'_, T> = self.get_iterator();
+
+        for entry in iterator.into_iter() {
+            if let Ok(entry) = entry {
+                if value(&entry.item) == &query {
+                    return Ok(entry);
+                }
+            }
+        }
+
+        Err(DBError::EntryNotFound)
+    }
+
     pub fn contains(&self, query: &T::Item) -> bool {
         let iterator: DBIterator<'_, T> = self.get_iterator();
 

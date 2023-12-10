@@ -8,4 +8,5 @@ pub mod file;
 pub mod serializer;
 pub mod stream;
 pub mod structures;
+pub mod tests;
 pub mod utils;
