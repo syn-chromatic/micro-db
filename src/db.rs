@@ -108,12 +108,12 @@ where
         Err(DBError::EntryNotFound)
     }
 
-    pub fn contains(&self, query: &T::Item) -> bool {
+    pub fn contains(&self, item: &T::Item) -> bool {
         let iterator: DBIterator<'_, T> = self.get_iterator();
 
         for entry in iterator.into_iter() {
             if let Ok(entry) = entry {
-                if &entry.item == query {
+                if &entry.item == item {
                     return true;
                 }
             }

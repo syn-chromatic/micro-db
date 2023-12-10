@@ -25,7 +25,7 @@ pub fn write_entries_at_once(path: &path::PathBuf) {
     println!("\n[WRITE ENTRIES AT ONCE]");
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
-    let mut entries: BTreeSet<ExampleStruct> = BTreeSet::new();
+    let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
 
     for idx in 0..100_000 + 1 {
         let my_struct = ExampleStruct {
@@ -34,11 +34,11 @@ pub fn write_entries_at_once(path: &path::PathBuf) {
             end_t: [idx, idx],
             week: [true; 7],
         };
-        entries.insert(my_struct);
+        items.insert(my_struct);
         print!("Idx: {}    \r", idx);
     }
 
-    db.add_entries(entries);
+    db.add_entries(items);
     println!();
 }
 
@@ -47,13 +47,13 @@ pub fn write_per_entry(path: &path::PathBuf) {
     let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
 
     for idx in 0..100_000 {
-        let my_struct: ExampleStruct = ExampleStruct {
+        let item: ExampleStruct = ExampleStruct {
             id: idx as u128,
             start_t: [idx, idx],
             end_t: [idx, idx],
             week: [true; 7],
         };
-        db.add_entry(&my_struct);
+        db.add_entry(&item);
         print!("Idx: {}     \r", idx);
     }
     println!();
