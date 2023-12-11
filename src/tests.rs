@@ -25,13 +25,36 @@ struct ExampleStruct {
     week: [bool; 7],
 }
 
+pub fn write_entries_from_file(path: &dyn CPathTrait) {
+    println!("\n[WRITE ENTRIES FROM FILE]");
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut file: FileBox = db.get_file_rwc();
+
+    let time: Instant = Instant::now();
+    for idx in 0..100_000 + 1 {
+        let item: ExampleStruct = ExampleStruct {
+            id: idx as u128,
+            start_t: [idx, idx],
+            end_t: [idx, idx],
+            week: [true; 7],
+        };
+        let _ = db.add_entry_from_file(&item, &mut file);
+        print!("Idx: {}     \r", idx);
+    }
+
+    let taken: Duration = time.elapsed();
+    println!("\nTaken: {}ms", taken.as_millis());
+    let _ = file.close();
+}
+
 pub fn write_entries_at_once(path: &dyn CPathTrait) {
     println!("\n[WRITE ENTRIES AT ONCE]");
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
+    let time: Instant = Instant::now();
     let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
-
     for idx in 0..100_000 + 1 {
         let my_struct = ExampleStruct {
             id: idx as u128,
@@ -44,25 +67,28 @@ pub fn write_entries_at_once(path: &dyn CPathTrait) {
     }
 
     let _ = db.add_entries(items);
-    println!();
+    let taken: Duration = time.elapsed();
+    println!("\nTaken: {}ms", taken.as_millis());
 }
 
-pub fn write_per_entry(path: &dyn CPathTrait) {
-    println!("\n[WRITE PER ENTRY]");
+pub fn write_entry(path: &dyn CPathTrait) {
+    println!("\n[WRITE ENTRY]");
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
-    for idx in 0..100_000 {
-        let item: ExampleStruct = ExampleStruct {
-            id: idx as u128,
-            start_t: [idx, idx],
-            end_t: [idx, idx],
-            week: [true; 7],
-        };
-        let _ = db.add_entry(&item);
-        print!("Idx: {}     \r", idx);
-    }
-    println!();
+    let time: Instant = Instant::now();
+
+    let idx: usize = 0;
+    let item: ExampleStruct = ExampleStruct {
+        id: idx as u128,
+        start_t: [idx, idx],
+        end_t: [idx, idx],
+        week: [true; 7],
+    };
+    let _ = db.add_entry(&item);
+
+    let taken: Duration = time.elapsed();
+    println!("Taken: {}ms", taken.as_millis());
 }
 
 pub fn find_entry_test(path: &dyn CPathTrait) {
@@ -100,7 +126,7 @@ pub fn database_benchmark(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
-    let mut file: FileBox = db.get_file();
+    let mut file: FileBox = db.get_file_r();
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
 
     let mut uid: u32 = 0;
@@ -124,7 +150,7 @@ pub fn database_integrity_test(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
-    let mut file: FileBox = db.get_file();
+    let mut file: FileBox = db.get_file_r();
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
 
     let mut uid: u32 = 0;
@@ -189,7 +215,7 @@ pub fn print_database(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
-    let mut file: FileBox = db.get_file();
+    let mut file: FileBox = db.get_file_r();
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
 
     for entry in db_iterator.into_iter() {
@@ -201,6 +227,11 @@ pub fn print_database(path: &dyn CPathTrait) {
 
 pub fn refresh_database(path: &dyn CPathTrait) {
     println!("\n[REFRESH DATABASE]");
-    let _ = std::fs::remove_file(path.as_str());
+    remove_database(path);
     write_entries_at_once(path);
+}
+
+pub fn remove_database(path: &dyn CPathTrait) {
+    println!("\n[REMOVE DATABASE]");
+    let _ = std::fs::remove_file(path.as_str());
 }
