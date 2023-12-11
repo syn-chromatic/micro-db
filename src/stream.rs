@@ -102,13 +102,13 @@ impl<const N: usize> DBStreamCache<N> {
     }
 }
 
-pub struct DBFileStream<const N: usize> {
-    file: Box<dyn FileTrait>,
+pub struct DBFileStream<'a, const N: usize> {
+    file: &'a mut Box<dyn FileTrait>,
     cache: DBStreamCache<N>,
     file_position: usize,
 }
 
-impl<const N: usize> DBFileStream<N> {
+impl<'a, const N: usize> DBFileStream<'a, N> {
     fn update_cache(&mut self) -> Result<(), DBError> {
         if !self.cache.is_ready() {
             let start: usize = self.file_position;
@@ -194,8 +194,8 @@ impl<const N: usize> DBFileStream<N> {
     }
 }
 
-impl<const N: usize> DBFileStream<N> {
-    pub fn new(file: Box<dyn FileTrait>) -> Self {
+impl<'a, const N: usize> DBFileStream<'a, N> {
+    pub fn new(file: &'a mut Box<dyn FileTrait>) -> Self {
         let cache: DBStreamCache<N> = DBStreamCache::new();
         let file_position: usize = 0;
         DBFileStream {
@@ -261,7 +261,7 @@ impl<const N: usize> DBFileStream<N> {
     }
 }
 
-impl<const N: usize> Iterator for DBFileStream<N> {
+impl<'a, const N: usize> Iterator for DBFileStream<'a, N> {
     type Item = Result<[u8; BLOCK_SIZE], DBError>;
 
     fn next(&mut self) -> Option<Self::Item> {

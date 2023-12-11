@@ -36,7 +36,7 @@ where
     T: IntoIterator + Eq,
     T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
-    stream: DBFileStream<CACHE_SIZE>,
+    stream: DBFileStream<'a, CACHE_SIZE>,
     serializer: DBSerializer<'a, T>,
 }
 
@@ -45,7 +45,7 @@ where
     T: IntoIterator + Eq,
     T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
-    pub fn new(stream: DBFileStream<CACHE_SIZE>, serializer: DBSerializer<'a, T>) -> Self {
+    pub fn new(stream: DBFileStream<'a, CACHE_SIZE>, serializer: DBSerializer<'a, T>) -> Self {
         Self { stream, serializer }
     }
 }

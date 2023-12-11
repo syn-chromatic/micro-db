@@ -63,6 +63,12 @@ impl FileTrait for File {
         let db_error: DBError = result.unwrap_err().into();
         Err(db_error)
     }
+
+    fn close(self: Box<Self>) -> Result<(), DBError> {
+        Ok(())
+    }
+
+
 }
 
 impl Into<DBError> for std::io::Error {

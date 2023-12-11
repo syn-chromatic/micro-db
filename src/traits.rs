@@ -14,6 +14,7 @@ pub trait FileTrait {
     fn write_all(&mut self, buffer: &[u8]) -> Result<(), DBError>;
     fn seek(&mut self, position: usize) -> Result<usize, DBError>;
     fn set_len(&self, size: usize) -> Result<(), DBError>;
+    fn close(self: Box<Self>) -> Result<(), DBError>;
 }
 
 pub trait OpenFileTrait {

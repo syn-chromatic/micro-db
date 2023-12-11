@@ -7,6 +7,8 @@ use std::time::Instant;
 use crate::db::Database;
 use crate::error::DBError;
 use crate::impls::OpenFile;
+use crate::serializer::DBSerializer;
+use crate::stream::DBFileStream;
 use crate::structures::DBEntry;
 use crate::structures::DBIterator;
 use crate::traits::CPathTrait;
@@ -42,7 +44,7 @@ pub fn write_entries_at_once(path: &dyn CPathTrait) {
         print!("Idx: {}    \r", idx);
     }
 
-    db.add_entries(items);
+    let _ = db.add_entries(items);
     println!();
 }
 
@@ -58,7 +60,7 @@ pub fn write_per_entry(path: &dyn CPathTrait) {
             end_t: [idx, idx],
             week: [true; 7],
         };
-        db.add_entry(&item);
+        let _ = db.add_entry(&item);
         print!("Idx: {}     \r", idx);
     }
     println!();
@@ -78,7 +80,7 @@ pub fn find_entry_test(path: &dyn CPathTrait) {
     };
 
     let time: Instant = Instant::now();
-    println!("Contains: {}", db.contains(&my_struct));
+    println!("Contains: {:?}", db.contains(&my_struct));
     let taken: Duration = time.elapsed();
     println!("Taken: {}ms", taken.as_millis());
 }
@@ -98,7 +100,12 @@ pub fn database_benchmark(path: &dyn CPathTrait) {
     println!("\n[DATABASE BENCHMARK]");
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
+
+    let mut file = db.get_file();
+    let db_stream = DBFileStream::new(&mut file);
+    let db_serializer: DBSerializer<'_, BTreeSet<ExampleStruct>> = DBSerializer::new();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> =
+        DBIterator::new(db_stream, db_serializer);
 
     let mut uid: u32 = 0;
     let instant: Instant = Instant::now();
@@ -120,7 +127,13 @@ pub fn database_integrity_test(path: &dyn CPathTrait) {
     println!("\n[DATABASE INTEGRITY TEST]");
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
+
+    let mut file = db.get_file();
+    let db_stream = DBFileStream::new(&mut file);
+    let db_serializer: DBSerializer<'_, BTreeSet<ExampleStruct>> = DBSerializer::new();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> =
+        DBIterator::new(db_stream, db_serializer);
+
     let mut uid: u32 = 0;
 
     for entry in db_iterator.into_iter() {
@@ -182,7 +195,12 @@ pub fn print_database(path: &dyn CPathTrait) {
     println!("\n[PRINT DATABASE]");
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
+
+    let mut file = db.get_file();
+    let db_stream = DBFileStream::new(&mut file);
+    let db_serializer: DBSerializer<'_, BTreeSet<ExampleStruct>> = DBSerializer::new();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> =
+        DBIterator::new(db_stream, db_serializer);
 
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {
