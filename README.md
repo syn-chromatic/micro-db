@@ -6,7 +6,7 @@ Serialized database for Microcontrollers with memory efficiency in mind.
 Supports [no_std] with the "embedded" feature but requires an allocator.
 ```
 
-#### `⤷` Current Performance
+#### `⤷` Current Performance (not tested on an MCU)
 ```
 Iterates over an entire 7MB database file containing 100K entries
 while only utilizing 1KB on the heap and takes 58ms (0.58μs per entry)
