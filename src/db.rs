@@ -79,9 +79,7 @@ where
         query: Q,
     ) -> Result<DBEntry<T::Item>, DBError> {
         let mut file: FileBox = self.get_file();
-        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(&mut file);
-        let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
-        let iterator: DBIterator<'_, T> = DBIterator::new(db_stream, db_serializer);
+        let iterator: DBIterator<'_, T> = DBIterator::from_file(&mut file);
 
         for entry in iterator.into_iter() {
             if let Ok(entry) = entry {
@@ -97,9 +95,7 @@ where
 
     pub fn contains(&mut self, item: &T::Item) -> Result<bool, DBError> {
         let mut file: FileBox = self.get_file();
-        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(&mut file);
-        let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
-        let iterator: DBIterator<'_, T> = DBIterator::new(db_stream, db_serializer);
+        let iterator: DBIterator<'_, T> = DBIterator::from_file(&mut file);
 
         for entry in iterator.into_iter() {
             if let Ok(entry) = entry {
@@ -122,9 +118,7 @@ where
 
     pub fn get_by_uid(&mut self, uid: u32) -> Result<DBEntry<T::Item>, DBError> {
         let mut file: FileBox = self.get_file();
-        let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(&mut file);
-        let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
-        let iterator: DBIterator<'_, T> = DBIterator::new(db_stream, db_serializer);
+        let iterator: DBIterator<'_, T> = DBIterator::from_file(&mut file);
 
         for entry in iterator.into_iter() {
             if let Ok(entry) = entry {

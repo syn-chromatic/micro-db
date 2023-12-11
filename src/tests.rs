@@ -7,11 +7,10 @@ use std::time::Instant;
 use crate::db::Database;
 use crate::error::DBError;
 use crate::impls::OpenFile;
-use crate::serializer::DBSerializer;
-use crate::stream::DBFileStream;
 use crate::structures::DBEntry;
 use crate::structures::DBIterator;
 use crate::traits::CPathTrait;
+use crate::traits::FileBox;
 use crate::traits::OpenFileBox;
 use crate::traits::OpenFileTrait;
 
@@ -101,11 +100,8 @@ pub fn database_benchmark(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
-    let mut file = db.get_file();
-    let db_stream = DBFileStream::new(&mut file);
-    let db_serializer: DBSerializer<'_, BTreeSet<ExampleStruct>> = DBSerializer::new();
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> =
-        DBIterator::new(db_stream, db_serializer);
+    let mut file: FileBox = db.get_file();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
 
     let mut uid: u32 = 0;
     let instant: Instant = Instant::now();
@@ -128,11 +124,8 @@ pub fn database_integrity_test(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
-    let mut file = db.get_file();
-    let db_stream = DBFileStream::new(&mut file);
-    let db_serializer: DBSerializer<'_, BTreeSet<ExampleStruct>> = DBSerializer::new();
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> =
-        DBIterator::new(db_stream, db_serializer);
+    let mut file: FileBox = db.get_file();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
 
     let mut uid: u32 = 0;
 
@@ -196,11 +189,8 @@ pub fn print_database(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
-    let mut file = db.get_file();
-    let db_stream = DBFileStream::new(&mut file);
-    let db_serializer: DBSerializer<'_, BTreeSet<ExampleStruct>> = DBSerializer::new();
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> =
-        DBIterator::new(db_stream, db_serializer);
+    let mut file: FileBox = db.get_file();
+    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
 
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {

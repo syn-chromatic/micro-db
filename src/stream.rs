@@ -1,9 +1,8 @@
 extern crate alloc;
-use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use crate::error::DBError;
-use crate::traits::FileTrait;
+use crate::traits::FileBox;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
@@ -103,7 +102,7 @@ impl<const N: usize> DBStreamCache<N> {
 }
 
 pub struct DBFileStream<'a, const N: usize> {
-    file: &'a mut Box<dyn FileTrait>,
+    file: &'a mut FileBox,
     cache: DBStreamCache<N>,
     file_position: usize,
 }
@@ -195,7 +194,7 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
 }
 
 impl<'a, const N: usize> DBFileStream<'a, N> {
-    pub fn new(file: &'a mut Box<dyn FileTrait>) -> Self {
+    pub fn new(file: &'a mut FileBox) -> Self {
         let cache: DBStreamCache<N> = DBStreamCache::new();
         let file_position: usize = 0;
         DBFileStream {

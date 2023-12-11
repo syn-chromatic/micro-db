@@ -1,11 +1,13 @@
 use crate::error;
 use crate::serializer;
 use crate::stream;
+use crate::traits;
 use crate::CACHE_SIZE;
 
 use error::DBError;
 use serializer::DBSerializer;
 use stream::DBFileStream;
+use traits::FileBox;
 
 use core::fmt::Debug;
 use core::hash;
@@ -46,6 +48,12 @@ where
     T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub fn new(stream: DBFileStream<'a, CACHE_SIZE>, serializer: DBSerializer<'a, T>) -> Self {
+        Self { stream, serializer }
+    }
+
+    pub fn from_file(file: &'a mut FileBox) -> Self {
+        let stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
+        let serializer: DBSerializer<'_, T> = DBSerializer::new();
         Self { stream, serializer }
     }
 }
