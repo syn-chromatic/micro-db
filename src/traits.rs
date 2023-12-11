@@ -1,3 +1,6 @@
+extern crate alloc;
+use alloc::boxed::Box;
+
 use crate::error::DBError;
 use core::ops::Deref;
 

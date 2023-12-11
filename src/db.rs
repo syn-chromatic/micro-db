@@ -8,6 +8,7 @@ use crate::CACHE_SIZE;
 
 extern crate alloc;
 use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
 
 use core::fmt::Debug;
 use core::hash;

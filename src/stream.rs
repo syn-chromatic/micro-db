@@ -1,3 +1,7 @@
+extern crate alloc;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
 use crate::error::DBError;
 use crate::traits::FileTrait;
 use crate::BLOCK_SIZE;

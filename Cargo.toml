@@ -7,7 +7,7 @@ edition = "2021"
 
 
 [dependencies]
-emballoc = { path = "extern-deps/emballoc-rs" }
+# emballoc = { path = "extern-deps/emballoc-rs" }
 serde = { version = "1.0", features = ["derive"] }
 bincode = { version = "1.3" }
 

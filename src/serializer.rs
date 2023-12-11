@@ -4,7 +4,9 @@ use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
 extern crate alloc;
+use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
 
 use core::fmt::Debug;
 use core::hash;
