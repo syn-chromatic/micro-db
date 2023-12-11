@@ -3,7 +3,7 @@ Serialized database for Microcontrollers with memory efficiency in mind.
 
 #### `⤷` Notes
 ```
-Planned support for [no_std]
+Supports [no_std] with the "embedded" feature but requires an allocator.
 ```
 
 #### `⤷` Current Performance
