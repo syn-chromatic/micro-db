@@ -7,12 +7,12 @@ use crate::traits::FileTrait;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
-pub struct Position<const N: usize> {
+pub struct Range<const N: usize> {
     start: usize,
     end: usize,
 }
 
-impl<const N: usize> Position<N> {
+impl<const N: usize> Range<N> {
     pub fn new() -> Self {
         let start: usize = 0;
         let end: usize = 0;
@@ -31,7 +31,7 @@ impl<const N: usize> Position<N> {
 pub struct DBStreamCache<const N: usize> {
     ready: bool,
     offset: usize,
-    position: Position<N>,
+    range: Range<N>,
     cache: [u8; N],
 }
 
@@ -56,12 +56,12 @@ impl<const N: usize> DBStreamCache<N> {
     pub fn new() -> Self {
         let ready: bool = false;
         let offset: usize = 0;
-        let position: Position<N> = Position::new();
+        let range: Range<N> = Range::new();
         let cache: [u8; N] = [0; N];
         Self {
             ready,
             offset,
-            position,
+            range,
             cache,
         }
     }
@@ -79,8 +79,8 @@ impl<const N: usize> DBStreamCache<N> {
         self.offset = 0;
         self.cache = cache;
 
-        self.position.set_start(start);
-        self.position.set_end(end);
+        self.range.set_start(start);
+        self.range.set_end(end);
     }
 
     pub fn get_chunk(&mut self) -> [u8; BLOCK_SIZE] {
@@ -105,47 +105,59 @@ impl<const N: usize> DBStreamCache<N> {
 pub struct DBFileStream<const N: usize> {
     file: Box<dyn FileTrait>,
     cache: DBStreamCache<N>,
+    file_position: usize,
 }
 
 impl<const N: usize> DBFileStream<N> {
     fn update_cache(&mut self) -> Result<(), DBError> {
         if !self.cache.is_ready() {
-            let stream_position: Result<usize, DBError> = self.file.stream_position();
-            if let Ok(start) = stream_position {
-                let start: usize = start as usize;
-                let end: usize = start + N;
+            let start: usize = self.file_position;
+            let end: usize = start + N;
 
-                let mut buffer: [u8; N] = [0; N];
-                let result: Result<(), DBError> = self.file.read_exact(&mut buffer);
-                if let Err(error) = result {
-                    if buffer.iter().all(|&x| x == 0) {
-                        return Err(error);
+            let mut buffer: [u8; N] = [0; N];
+            let result: Result<(), DBError> = self.file.read_exact(&mut buffer);
+            self.file_position += N;
+
+            if let Err(error) = result {
+                // This assumes that the read buffer contains EOE at the end
+                // Which is not ideal.
+                let mut unused_length: usize = 0;
+                for value in buffer.iter().rev() {
+                    if *value == 0 {
+                        unused_length += 1;
+                    } else {
+                        break;
                     }
                 }
+                self.file_position -= unused_length;
 
-                self.cache.set_cache(buffer, start, end);
-                return Ok(());
+                if unused_length == N {
+                    return Err(error);
+                }
             }
-            return Err(stream_position.unwrap_err());
+            self.cache.set_cache(buffer, start, end);
+            return Ok(());
         }
         Ok(())
     }
 
     fn seek_from_start(&mut self, start: usize) -> Result<(), DBError> {
-        let cache_st: usize = self.cache.position.start;
-        let cache_en: usize = self.cache.position.end;
+        let cache_st: usize = self.cache.range.start;
+        let cache_en: usize = self.cache.range.end;
 
         if cache_st <= start && cache_en > start {
             let offset: usize = start - cache_st;
             self.cache.seek_from_offset(offset);
         }
 
-        self.file.seek(start)?;
+        let seek: usize = self.file.seek(start)?;
+        self.file_position = seek;
         Ok(())
     }
 
     fn write(&mut self, buffer: &[u8]) -> Result<(), DBError> {
-        self.file.write(buffer)?;
+        let write_len: usize = self.file.write(buffer).unwrap();
+        self.file_position += write_len;
         Ok(())
     }
 
@@ -185,12 +197,17 @@ impl<const N: usize> DBFileStream<N> {
 impl<const N: usize> DBFileStream<N> {
     pub fn new(file: Box<dyn FileTrait>) -> Self {
         let cache: DBStreamCache<N> = DBStreamCache::new();
-        DBFileStream { file, cache }
+        let file_position: usize = 0;
+        DBFileStream {
+            file,
+            cache,
+            file_position,
+        }
     }
 
     pub fn get_chunk_bounds(&mut self) -> Result<(usize, usize), DBError> {
         self.update_cache()?;
-        let cache_st: usize = self.cache.offset + self.cache.position.start;
+        let cache_st: usize = self.cache.offset + self.cache.range.start;
         for block in self.into_iter() {
             if let Ok(block) = block {
                 if block == EOE_BLOCK {
@@ -201,14 +218,15 @@ impl<const N: usize> DBFileStream<N> {
             return Err(DBError::InvalidData);
         }
 
-        let cache_en: usize = self.cache.offset + self.cache.position.start;
+        let cache_en: usize = self.cache.offset + self.cache.range.start;
         self.seek_from_start(cache_st)?;
         Ok((cache_st, cache_en))
     }
 
     pub fn append_end(&mut self, data: &[u8]) {
         while let Ok(_) = self.next_chunk() {}
-        self.file.write(data).unwrap();
+        let write_len: usize = self.file.write(data).unwrap();
+        self.file_position += write_len;
     }
 
     pub fn last_chunk(&mut self) -> Option<Vec<u8>> {

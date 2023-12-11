@@ -14,18 +14,6 @@ use std::io::Seek;
 use std::io::SeekFrom;
 
 impl FileTrait for File {
-    fn create(path: &dyn CPathTrait) -> Result<Box<dyn FileTrait>, DBError>
-    where
-        Self: Sized,
-    {
-        let result: Result<File, Error> = File::create(path.as_str());
-        if let Ok(file) = result {
-            return Ok(Box::new(file));
-        }
-        let db_error: DBError = result.unwrap_err().into();
-        Err(db_error)
-    }
-
     fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), DBError> {
         let result: Result<(), Error> = <Self as Read>::read_exact(self, buffer);
         if result.is_ok() {
@@ -62,16 +50,6 @@ impl FileTrait for File {
         if let Ok(result) = result {
             return Ok(result as usize);
         }
-        let db_error: DBError = result.unwrap_err().into();
-        Err(db_error)
-    }
-
-    fn stream_position(&mut self) -> Result<usize, DBError> {
-        let result: Result<u64, Error> = <Self as Seek>::stream_position(self);
-        if let Ok(result) = result {
-            return Ok(result as usize);
-        }
-
         let db_error: DBError = result.unwrap_err().into();
         Err(db_error)
     }

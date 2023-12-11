@@ -155,6 +155,19 @@ pub fn remove_test(path: &dyn CPathTrait) {
     println!("Taken: {}ms", taken.as_millis());
 }
 
+pub fn remove_loop_test(path: &dyn CPathTrait) {
+    println!("\n[REMOVE TEST]");
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+
+    for uid in 0..500 {
+        let instant: Instant = Instant::now();
+        let _ = db.remove_by_uid(uid);
+        let taken: Duration = instant.elapsed();
+        println!("Taken: {}ms", taken.as_millis());
+    }
+}
+
 pub fn query_test(path: &dyn CPathTrait) {
     println!("\n[QUERY TEST]");
     let open: OpenFileBox = OpenFile::new();
