@@ -10,13 +10,13 @@ use stream::DBFileStream;
 use core::fmt::Debug;
 use core::hash;
 
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use bincode::Decode;
+use bincode::Encode;
 
 #[derive(Debug)]
 pub struct DBEntry<T>
 where
-    T: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub uid: u32,
     pub item: T,
@@ -24,7 +24,7 @@ where
 
 impl<T> DBEntry<T>
 where
-    T: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub fn new(uid: u32, item: T) -> Self {
         Self { uid, item }
@@ -34,7 +34,7 @@ where
 pub struct DBIterator<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     stream: DBFileStream<CACHE_SIZE>,
     serializer: DBSerializer<'a, T>,
@@ -43,7 +43,7 @@ where
 impl<'a, T> DBIterator<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub fn new(stream: DBFileStream<CACHE_SIZE>, serializer: DBSerializer<'a, T>) -> Self {
         Self { stream, serializer }
@@ -53,7 +53,7 @@ where
 impl<'a, T> Iterator for DBIterator<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     type Item = Result<DBEntry<T::Item>, DBError>;
 
@@ -66,4 +66,3 @@ where
         None
     }
 }
-

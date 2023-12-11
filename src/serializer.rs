@@ -1,28 +1,29 @@
+extern crate alloc;
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
+
 use crate::error::DBError;
 use crate::structures::DBEntry;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
-extern crate alloc;
-use alloc::boxed::Box;
-use alloc::collections::BTreeSet;
-use alloc::vec::Vec;
-
 use core::fmt::Debug;
 use core::hash;
 use core::marker::PhantomData;
 
-use bincode::deserialize;
-use bincode::serialize;
-use bincode::ErrorKind;
-
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use bincode::config::legacy;
+use bincode::config::*;
+use bincode::decode_from_slice;
+use bincode::encode_to_vec;
+use bincode::error::DecodeError;
+use bincode::error::EncodeError;
+use bincode::Decode;
+use bincode::Encode;
 
 pub struct DBSerializer<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub _marker: PhantomData<&'a T>,
 }
@@ -30,10 +31,11 @@ where
 impl<'a, T> DBSerializer<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     fn bincode_serialize(&self, item: &T::Item) -> Result<Vec<u8>, DBError> {
-        let bytes: Result<Vec<u8>, Box<ErrorKind>> = serialize(item);
+        let config: Configuration<LittleEndian, Fixint> = legacy();
+        let bytes: Result<Vec<u8>, EncodeError> = encode_to_vec(item, config);
         if let Ok(bytes) = bytes {
             return Ok(bytes);
         }
@@ -41,8 +43,9 @@ where
     }
 
     fn bincode_deserialize(&self, bytes: &[u8]) -> Result<T::Item, DBError> {
-        let item: Result<T::Item, Box<ErrorKind>> = deserialize(bytes);
-        if let Ok(item) = item {
+        let config: Configuration<LittleEndian, Fixint> = legacy();
+        let item: Result<(T::Item, usize), DecodeError> = decode_from_slice(bytes, config);
+        if let Ok((item, _)) = item {
             return Ok(item);
         }
         Err(DBError::DeserializeError)
@@ -58,7 +61,7 @@ where
 impl<'a, T> DBSerializer<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub fn new() -> Self {
         let _marker: PhantomData<&T> = PhantomData;
@@ -148,7 +151,8 @@ where
     }
 
     pub fn serialize_uid(&self, uid: u32) -> Result<Vec<u8>, DBError> {
-        let bytes: Result<Vec<u8>, Box<ErrorKind>> = serialize(&uid);
+        let config: Configuration<LittleEndian, Fixint> = legacy();
+        let bytes: Result<Vec<u8>, EncodeError> = encode_to_vec(&uid, config);
         if let Ok(mut bytes) = bytes {
             bytes.resize(BLOCK_SIZE, 0);
             return Ok(bytes);
@@ -157,8 +161,9 @@ where
     }
 
     pub fn deserialize_uid(&self, buffer: &[u8]) -> Result<u32, DBError> {
-        let uid: Result<u32, Box<ErrorKind>> = deserialize(buffer);
-        if let Ok(uid) = uid {
+        let config: Configuration<LittleEndian, Fixint> = legacy();
+        let uid: Result<(u32, usize), DecodeError> = decode_from_slice(buffer, config);
+        if let Ok((uid, _)) = uid {
             return Ok(uid);
         }
 

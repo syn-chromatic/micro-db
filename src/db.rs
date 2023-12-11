@@ -25,13 +25,13 @@ use traits::FileBox;
 
 use traits::OpenFileBox;
 
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use bincode::Decode;
+use bincode::Encode;
 
 pub struct Database<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub path: CPathBox,
     pub open: OpenFileBox,
@@ -42,7 +42,7 @@ where
 impl<'a, T> Database<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     fn get_uid_from_chunk(
         &self,
@@ -61,7 +61,7 @@ where
 impl<'a, T> Database<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     pub fn new(path: &dyn CPathTrait, open: OpenFileBox, strict_dupes: bool) -> Self {
         let path: CPathBox = path.boxed();

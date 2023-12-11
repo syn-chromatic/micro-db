@@ -1,6 +1,12 @@
+#![cfg_attr(feature = "embedded", no_std)]
+#![cfg_attr(feature = "embedded", no_main)]
+
+#[cfg(feature = "std")]
 use micro_db::impls::CPath;
+#[cfg(feature = "std")]
 use micro_db::tests::*;
 
+#[cfg(feature = "std")]
 fn main() {
     let path: CPath = CPath::new("./database.mdb");
     refresh_database(&path);

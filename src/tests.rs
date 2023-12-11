@@ -13,10 +13,10 @@ use crate::traits::CPathTrait;
 use crate::traits::OpenFileBox;
 use crate::traits::OpenFileTrait;
 
-use serde::Deserialize;
-use serde::Serialize;
+use bincode::Decode;
+use bincode::Encode;
 
-#[derive(Debug, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Encode, Decode, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 struct ExampleStruct {
     id: u128,
     start_t: [usize; 2],
