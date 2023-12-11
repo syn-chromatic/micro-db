@@ -13,16 +13,16 @@ use core::fmt::Debug;
 use core::hash;
 use core::marker::PhantomData;
 
-use std::fs::File;
-use std::fs::OpenOptions;
-
 use error::DBError;
 use serializer::DBSerializer;
 use stream::DBFileStream;
 use structures::DBEntry;
 use structures::DBIterator;
-use traits::FileTrait;
-use traits::PathBufBox;
+use traits::CPathBox;
+use traits::CPathTrait;
+use traits::FileBox;
+
+use traits::OpenFileBox;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -32,7 +32,8 @@ where
     T: IntoIterator + Eq,
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    pub path: PathBufBox,
+    pub path: CPathBox,
+    pub open: OpenFileBox,
     pub strict_dupes: bool,
     pub _marker: PhantomData<&'a T>,
 }
@@ -61,17 +62,18 @@ where
     T: IntoIterator + Eq,
     T::Item: Serialize + DeserializeOwned + hash::Hash + Eq + Debug,
 {
-    pub fn new(path: &PathBufBox, strict_dupes: bool) -> Self {
-        let path: PathBufBox = path.clone_box();
+    pub fn new(path: &dyn CPathTrait, open: OpenFileBox, strict_dupes: bool) -> Self {
+        let path: CPathBox = path.boxed();
         Database {
             path,
+            open,
             strict_dupes,
             _marker: PhantomData,
         }
     }
 
     pub fn query<Q: PartialEq, V: Fn(&T::Item) -> &Q>(
-        &self,
+        &mut self,
         value: V,
         query: Q,
     ) -> Result<DBEntry<T::Item>, DBError> {
@@ -88,7 +90,7 @@ where
         Err(DBError::EntryNotFound)
     }
 
-    pub fn contains(&self, item: &T::Item) -> bool {
+    pub fn contains(&mut self, item: &T::Item) -> bool {
         let iterator: DBIterator<'_, T> = self.iterator();
 
         for entry in iterator.into_iter() {
@@ -101,8 +103,11 @@ where
         false
     }
 
-    pub fn iterator(&self) -> DBIterator<'_, T> {
-        let file: Box<dyn FileTrait> = Box::new(File::open(self.path.as_str()).unwrap());
+    pub fn iterator(&mut self) -> DBIterator<'_, T> {
+        self.open.reset();
+        self.open.read(true);
+        let file: FileBox = self.open.open(&*self.path).unwrap();
+
         let db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
@@ -110,7 +115,7 @@ where
         iterator
     }
 
-    pub fn get_by_uid(&self, uid: u32) -> Result<DBEntry<T::Item>, DBError> {
+    pub fn get_by_uid(&mut self, uid: u32) -> Result<DBEntry<T::Item>, DBError> {
         let iterator: DBIterator<'_, T> = self.iterator();
 
         for entry in iterator.into_iter() {
@@ -124,14 +129,11 @@ where
         Err(DBError::EntryNotFound)
     }
 
-    pub fn remove_by_uid(&self, uid: u32) -> Result<(), DBError> {
-        let file: Box<dyn FileTrait> = Box::new(
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(self.path.as_str())
-                .unwrap(),
-        );
+    pub fn remove_by_uid(&mut self, uid: u32) -> Result<(), DBError> {
+        self.open.reset();
+        self.open.read(true);
+        self.open.write(true);
+        let file: FileBox = self.open.open(&*self.path).unwrap();
 
         let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         for _ in 0..uid {
@@ -142,15 +144,13 @@ where
         Ok(())
     }
 
-    pub fn add_entry(&self, item: &T::Item) {
-        let file: Box<dyn FileTrait> = Box::new(
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(self.path.as_str())
-                .unwrap(),
-        );
+    pub fn add_entry(&mut self, item: &T::Item) {
+        self.open.reset();
+        self.open.read(true);
+        self.open.write(true);
+        self.open.create(true);
+
+        let file: FileBox = self.open.open(&*self.path).unwrap();
 
         let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
@@ -162,15 +162,13 @@ where
         db_stream.append_end(&data);
     }
 
-    pub fn add_entries(&self, items: BTreeSet<T::Item>) {
-        let file: Box<dyn FileTrait> = Box::new(
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(self.path.as_str())
-                .unwrap(),
-        );
+    pub fn add_entries(&mut self, items: BTreeSet<T::Item>) {
+        self.open.reset();
+        self.open.read(true);
+        self.open.write(true);
+        self.open.create(true);
+
+        let file: FileBox = self.open.open(&*self.path).unwrap();
 
         let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();

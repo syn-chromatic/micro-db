@@ -1,9 +1,12 @@
 use crate::error::DBError;
+use crate::traits::CPathBox;
+use crate::traits::CPathTrait;
 use crate::traits::FileTrait;
-use crate::traits::PathBufBox;
-use crate::traits::PathBufTrait;
+use crate::traits::OpenFileBox;
+use crate::traits::OpenFileTrait;
 
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::Error;
 use std::io::Read;
@@ -11,6 +14,18 @@ use std::io::Seek;
 use std::io::SeekFrom;
 
 impl FileTrait for File {
+    fn create(path: &dyn CPathTrait) -> Result<Box<dyn FileTrait>, DBError>
+    where
+        Self: Sized,
+    {
+        let result: Result<File, Error> = File::create(path.as_str());
+        if let Ok(file) = result {
+            return Ok(Box::new(file));
+        }
+        let db_error: DBError = result.unwrap_err().into();
+        Err(db_error)
+    }
+
     fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), DBError> {
         let result: Result<(), Error> = <Self as Read>::read_exact(self, buffer);
         if result.is_ok() {
@@ -80,24 +95,100 @@ impl Into<DBError> for std::io::Error {
 }
 
 #[derive(Clone)]
-pub struct PathBuf {
-    path: String,
+pub struct OpenFile {
+    read: bool,
+    write: bool,
+    append: bool,
+    truncate: bool,
+    create: bool,
 }
 
-impl PathBuf {
-    pub fn new(path: &str) -> PathBufBox {
-        let path = path.to_string();
-        let pathbuf = PathBuf { path };
-        Box::new(pathbuf)
+impl OpenFileTrait for OpenFile {
+    fn new() -> OpenFileBox
+    where
+        Self: Sized,
+    {
+        let read: bool = false;
+        let write: bool = false;
+        let append: bool = false;
+        let truncate: bool = false;
+        let create: bool = false;
+        Box::new(Self {
+            read,
+            write,
+            append,
+            truncate,
+            create,
+        })
+    }
+
+    fn boxed(&self) -> OpenFileBox {
+        Box::new(self.clone())
+    }
+
+    fn read(&mut self, read: bool) {
+        self.read = read;
+    }
+
+    fn write(&mut self, write: bool) {
+        self.write = write;
+    }
+
+    fn append(&mut self, append: bool) {
+        self.append = append;
+    }
+
+    fn truncate(&mut self, truncate: bool) {
+        self.truncate = truncate;
+    }
+
+    fn create(&mut self, create: bool) {
+        self.create = create;
+    }
+
+    fn reset(&mut self) {
+        self.read = false;
+        self.write = false;
+        self.append = false;
+        self.truncate = false;
+        self.create = false;
+    }
+
+    fn open(&self, path: &dyn CPathTrait) -> Result<crate::traits::FileBox, DBError> {
+        let mut open_options: OpenOptions = OpenOptions::new();
+        open_options.read(self.read);
+        open_options.write(self.write);
+        open_options.append(self.append);
+        open_options.truncate(self.truncate);
+        open_options.create(self.create);
+
+        let result: Result<File, Error> = open_options.open(path.as_str());
+        if let Ok(file) = result {
+            return Ok(Box::new(file));
+        }
+        let db_error: DBError = result.unwrap_err().into();
+        Err(db_error)
     }
 }
 
-impl PathBufTrait for PathBuf {
+#[derive(Clone)]
+pub struct CPath {
+    path: String,
+}
+
+impl CPath {
+    pub fn new(path: &str) -> CPath {
+        let path: String = path.to_string();
+        CPath { path }
+    }
+}
+
+impl CPathTrait for CPath {
     fn as_str(&self) -> &str {
         &self.path
     }
 
-    fn clone_box(&self) -> PathBufBox {
+    fn boxed(&self) -> CPathBox {
         Box::new(self.clone())
     }
 }

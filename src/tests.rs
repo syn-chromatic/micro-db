@@ -1,16 +1,17 @@
 extern crate alloc;
 use alloc::collections::BTreeSet;
 
-// use std::path;
 use std::time::Duration;
 use std::time::Instant;
 
 use crate::db::Database;
 use crate::error::DBError;
+use crate::impls::OpenFile;
 use crate::structures::DBEntry;
 use crate::structures::DBIterator;
-use crate::traits::PathBufBox;
-use crate::traits::PathBufTrait;
+use crate::traits::CPathTrait;
+use crate::traits::OpenFileBox;
+use crate::traits::OpenFileTrait;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -23,9 +24,10 @@ struct ExampleStruct {
     week: [bool; 7],
 }
 
-pub fn write_entries_at_once(path: &PathBufBox) {
+pub fn write_entries_at_once(path: &dyn CPathTrait) {
     println!("\n[WRITE ENTRIES AT ONCE]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
     let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
 
@@ -44,9 +46,10 @@ pub fn write_entries_at_once(path: &PathBufBox) {
     println!();
 }
 
-pub fn write_per_entry(path: &PathBufBox) {
+pub fn write_per_entry(path: &dyn CPathTrait) {
     println!("\n[WRITE PER ENTRY]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
     for idx in 0..100_000 {
         let item: ExampleStruct = ExampleStruct {
@@ -61,9 +64,10 @@ pub fn write_per_entry(path: &PathBufBox) {
     println!();
 }
 
-pub fn find_entry_test(path: &PathBufBox) {
+pub fn find_entry_test(path: &dyn CPathTrait) {
     println!("\n[FIND ENTRY TEST]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
     let idx: usize = 1000;
     let my_struct: ExampleStruct = ExampleStruct {
@@ -79,9 +83,10 @@ pub fn find_entry_test(path: &PathBufBox) {
     println!("Taken: {}ms", taken.as_millis());
 }
 
-pub fn get_entry_test(path: &PathBufBox) {
+pub fn get_entry_test(path: &dyn CPathTrait) {
     println!("\n[GET ENTRY TEST]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
     let time: Instant = Instant::now();
     let entry: Result<DBEntry<ExampleStruct>, DBError> = db.get_by_uid(49_000);
     let taken: Duration = time.elapsed();
@@ -89,9 +94,10 @@ pub fn get_entry_test(path: &PathBufBox) {
     println!("Entry: {:?}", entry);
 }
 
-pub fn database_benchmark(path: &PathBufBox) {
+pub fn database_benchmark(path: &dyn CPathTrait) {
     println!("\n[DATABASE BENCHMARK]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
 
     let mut uid: u32 = 0;
@@ -110,9 +116,10 @@ pub fn database_benchmark(path: &PathBufBox) {
     );
 }
 
-pub fn database_integrity_test(path: &PathBufBox) {
+pub fn database_integrity_test(path: &dyn CPathTrait) {
     println!("\n[DATABASE INTEGRITY TEST]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
     let mut uid: u32 = 0;
 
@@ -136,9 +143,10 @@ pub fn database_integrity_test(path: &PathBufBox) {
     println!("DATABASE INTEGRITY SUCCESS");
 }
 
-pub fn remove_test(path: &PathBufBox) {
+pub fn remove_test(path: &dyn CPathTrait) {
     println!("\n[REMOVE TEST]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
     let uid: u32 = 2;
     let instant: Instant = Instant::now();
@@ -147,18 +155,20 @@ pub fn remove_test(path: &PathBufBox) {
     println!("Taken: {}ms", taken.as_millis());
 }
 
-pub fn query_test(path: &PathBufBox) {
+pub fn query_test(path: &dyn CPathTrait) {
     println!("\n[QUERY TEST]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
 
     let result: Result<DBEntry<ExampleStruct>, DBError> =
         db.query(|s: &ExampleStruct| &s.start_t, [327, 327]);
     println!("Result: {:?}", result);
 }
 
-pub fn print_database(path: &PathBufBox) {
+pub fn print_database(path: &dyn CPathTrait) {
     println!("\n[PRINT DATABASE]");
-    let db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, false);
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
     let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = db.iterator();
 
     for entry in db_iterator.into_iter() {
@@ -168,7 +178,7 @@ pub fn print_database(path: &PathBufBox) {
     }
 }
 
-pub fn refresh_database(path: &PathBufBox) {
+pub fn refresh_database(path: &dyn CPathTrait) {
     println!("\n[REFRESH DATABASE]");
     let _ = std::fs::remove_file(path.as_str());
     write_entries_at_once(path);

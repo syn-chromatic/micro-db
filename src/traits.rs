@@ -1,7 +1,15 @@
 use crate::error::DBError;
 use core::ops::Deref;
 
+pub type FileBox = Box<dyn FileTrait>;
+pub type CPathBox = Box<dyn CPathTrait>;
+pub type OpenFileBox = Box<dyn OpenFileTrait>;
+
 pub trait FileTrait {
+    fn create(path: &dyn CPathTrait) -> Result<Box<dyn FileTrait>, DBError>
+    where
+        Self: Sized;
+
     fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), DBError>;
     fn write(&mut self, buffer: &[u8]) -> Result<usize, DBError>;
     fn write_all(&mut self, buffer: &[u8]) -> Result<(), DBError>;
@@ -10,14 +18,27 @@ pub trait FileTrait {
     fn set_len(&self, size: usize) -> Result<(), DBError>;
 }
 
-pub type PathBufBox = Box<dyn PathBufTrait>;
+pub trait OpenFileTrait {
+    fn new() -> OpenFileBox
+    where
+        Self: Sized;
+    fn boxed(&self) -> OpenFileBox;
 
-pub trait PathBufTrait {
-    fn as_str(&self) -> &str;
-    fn clone_box(&self) -> Box<dyn PathBufTrait>;
+    fn read(&mut self, read: bool);
+    fn write(&mut self, write: bool);
+    fn append(&mut self, append: bool);
+    fn truncate(&mut self, truncate: bool);
+    fn create(&mut self, create: bool);
+    fn reset(&mut self);
+    fn open(&self, path: &dyn CPathTrait) -> Result<FileBox, DBError>;
 }
 
-impl Deref for dyn PathBufTrait {
+pub trait CPathTrait {
+    fn as_str(&self) -> &str;
+    fn boxed(&self) -> CPathBox;
+}
+
+impl Deref for dyn CPathTrait {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
