@@ -66,7 +66,7 @@ where
     type Item = Result<DBEntry<T::Item>, DBError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let chunk = self.stream.next_chunk();
+        let chunk = self.stream.iter_chunk();
         if let Ok(chunk) = chunk {
             let entry = self.serializer.deserialize(&chunk);
             return Some(entry);
@@ -90,7 +90,7 @@ impl<'a> Iterator for DBChunkIterator<'a> {
     type Item = Result<Vec<u8>, DBError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let chunk = self.stream.next_chunk();
+        let chunk = self.stream.iter_chunk();
         if let Ok(chunk) = chunk {
             return Some(Ok(chunk));
         }

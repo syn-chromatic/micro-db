@@ -1,6 +1,7 @@
 ## `⌽` MicroDB [In Development]
 Serialized database for Microcontrollers with memory efficiency in mind.
 
+
 #### `⤷` Notes
 ```
 Supports [no_std] with the "embedded" feature but requires an allocator.
@@ -11,6 +12,7 @@ https://github.com/jfrimmel/emballoc
 This repository includes a modified version of emballoc for testing purposes.
 ```
 
+
 #### `⤷` Current Performance (not tested on an MCU)
 ```
 Iterates over an entire 7MB database file containing 100K entries
@@ -18,10 +20,10 @@ while only utilizing 1KB on the heap and takes 58ms (0.58μs per entry)
 using a cache size of 512 bytes.
 ```
 
+
 #### `⤷` Known Issues
-```
-Serialized data with variable entry chunk sizes muddles the database on removal of entry
-```
+
+- ~~Serialized data with variable entry chunk sizes muddles the database on removal of entry~~ ─ Issue Fixed
 
 
 ___
@@ -36,6 +38,7 @@ incrementing sequentially regardless if entries are removed.
 EOE: End-Of-Entry ─ [32-Bit Fixed-Size Integer]
 An arbitrary series of known bytes to indicate the end of an entry (needs more research).
 ```
+
 
 #### `⤷` 4-byte aligned database structure
 ```

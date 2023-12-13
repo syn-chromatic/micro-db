@@ -2,6 +2,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use crate::error::DBError;
+use crate::serializer::UIDSerializer;
 use crate::traits::FileBox;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
@@ -105,6 +106,7 @@ pub struct DBFileStream<'a, const N: usize> {
     file: &'a mut FileBox,
     cache: DBStreamCache<N>,
     file_position: usize,
+    uid_serializer: UIDSerializer,
 }
 
 impl<'a, const N: usize> DBFileStream<'a, N> {
@@ -164,32 +166,34 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
         &mut self,
         st_pos1: &mut usize,
         en_pos1: &mut usize,
+        mut uid: u32,
     ) -> Result<(), DBError> {
-        loop {
-            let current_chunk: Vec<u8> = self.next_chunk()?;
-            let current_uid: &[u8] = &current_chunk[..BLOCK_SIZE];
-
-            // Get next chunk bounds
-            let (st_pos2, en_pos2) = self.get_chunk_bounds()?;
+        while let Ok((_, en_pos2)) = self.get_chunk_bounds() {
+            // Create UID block
+            let uid_block: Vec<u8> = self.uid_serializer.serialize_uid(uid)?;
 
             // Get next chunk
-            let mut next_chunk: Vec<u8> = self.next_chunk()?;
+            let mut next_chunk: Vec<u8> = self.iter_chunk()?;
 
-            // Overwrite UID from current chunk
-            next_chunk[..BLOCK_SIZE].copy_from_slice(current_uid);
+            // Overwrite next chunk UID
+            next_chunk[..BLOCK_SIZE].copy_from_slice(&uid_block);
 
             // Seek to current chunk start
             self.seek_from_start(*st_pos1)?;
 
-            // Overwrite next chunk data
+            // Overwrite with next chunk data
             self.write(&next_chunk)?;
 
-            // Seek to the end of current chunk
-            self.seek_from_start(*en_pos1)?;
+            // Seek to the end of next chunk
+            self.seek_from_start(en_pos2)?;
 
-            *st_pos1 = st_pos2;
+            // Set position of next chunk
+            *st_pos1 = *st_pos1 + next_chunk.len();
             *en_pos1 = en_pos2;
+
+            uid += 1;
         }
+        Ok(())
     }
 }
 
@@ -197,12 +201,16 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
     pub fn new(file: &'a mut FileBox) -> Self {
         let cache: DBStreamCache<N> = DBStreamCache::new();
         let file_position: usize = 0;
+        let uid_serializer: UIDSerializer = UIDSerializer::new();
         DBFileStream {
             file,
             cache,
             file_position,
+            uid_serializer,
         }
     }
+
+    pub fn get_chunk_uid(&mut self) {}
 
     pub fn get_chunk_bounds(&mut self) -> Result<(usize, usize), DBError> {
         self.update_cache()?;
@@ -223,20 +231,20 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
     }
 
     pub fn append_end(&mut self, data: &[u8]) {
-        while let Ok(_) = self.next_chunk() {}
+        while let Ok(_) = self.iter_chunk() {}
         let write_len: usize = self.file.write(data).unwrap();
         self.file_position += write_len;
     }
 
     pub fn last_chunk(&mut self) -> Option<Vec<u8>> {
         let mut last_chunk: Option<Vec<u8>> = None;
-        while let Ok(chunk) = self.next_chunk() {
+        while let Ok(chunk) = self.iter_chunk() {
             last_chunk = Some(chunk);
         }
         last_chunk
     }
 
-    pub fn next_chunk(&mut self) -> Result<Vec<u8>, DBError> {
+    pub fn iter_chunk(&mut self) -> Result<Vec<u8>, DBError> {
         let mut data: Vec<u8> = Vec::new();
 
         for block in self.into_iter() {
@@ -254,7 +262,12 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
 
     pub fn remove_chunk(&mut self) -> Result<(), DBError> {
         let (mut st_pos1, mut en_pos1) = self.get_chunk_bounds()?;
-        self.rebuild_database(&mut st_pos1, &mut en_pos1)?;
+
+        let current_chunk: Vec<u8> = self.iter_chunk()?;
+        let current_uid_block: &[u8] = &current_chunk[..BLOCK_SIZE];
+        let current_uid: u32 = self.uid_serializer.deserialize_uid(current_uid_block)?;
+
+        let _ = self.rebuild_database(&mut st_pos1, &mut en_pos1, current_uid);
         self.file.set_len(st_pos1)?;
         Ok(())
     }

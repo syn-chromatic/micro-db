@@ -19,51 +19,33 @@ use bincode::Decode;
 use bincode::Encode;
 
 #[derive(Encode, Decode, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
-struct ExampleStruct {
+pub struct FixedSizeStruct {
     id: u128,
     start_t: [usize; 2],
     end_t: [usize; 2],
     week: [bool; 7],
 }
 
-pub fn write_entries_from_file(path: &dyn CPathTrait) {
-    println!("\n[WRITE ENTRIES FROM FILE]");
-    let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
-    let mut file: FileBox = db.get_file_rwc();
-
-    let time: Instant = Instant::now();
-    for idx in 0..1000 + 1 {
-        let item: ExampleStruct = ExampleStruct {
-            id: idx as u128,
-            start_t: [idx, idx],
-            end_t: [idx, idx],
-            week: [true; 7],
-        };
-        let _ = db.add_entry_from_file(&item, &mut file);
-        print!("Idx: {}     \r", idx);
-    }
-
-    let taken: Duration = time.elapsed();
-    println!("\nTaken: {}ms", taken.as_millis());
-    let _ = file.close();
+pub fn create_fixed_struct(idx: usize) -> FixedSizeStruct {
+    let fixed_struct = FixedSizeStruct {
+        id: idx as u128,
+        start_t: [idx, idx],
+        end_t: [idx, idx],
+        week: [true; 7],
+    };
+    fixed_struct
 }
 
 pub fn write_entries_at_once(path: &dyn CPathTrait) {
     println!("\n[WRITE ENTRIES AT ONCE]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
     let time: Instant = Instant::now();
-    let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
-    for idx in 0..1000 + 1 {
-        let my_struct = ExampleStruct {
-            id: idx as u128,
-            start_t: [idx, idx],
-            end_t: [idx, idx],
-            week: [true; 7],
-        };
-        items.insert(my_struct);
+    let mut items: BTreeSet<FixedSizeStruct> = BTreeSet::new();
+    for idx in 0..100_000 + 1 {
+        let item: FixedSizeStruct = create_fixed_struct(idx);
+        items.insert(item);
         print!("Idx: {}    \r", idx);
     }
 
@@ -72,20 +54,31 @@ pub fn write_entries_at_once(path: &dyn CPathTrait) {
     println!("\nTaken: {}ms", taken.as_millis());
 }
 
+pub fn write_entries(path: &dyn CPathTrait) {
+    println!("\n[WRITE ENTRIES]");
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+
+    let time: Instant = Instant::now();
+
+    for idx in 0..1000 {
+        let item: FixedSizeStruct = create_fixed_struct(idx);
+        let _ = db.add_entry(&item);
+    }
+
+    let taken: Duration = time.elapsed();
+    println!("Taken: {}ms", taken.as_millis());
+}
+
 pub fn write_entry(path: &dyn CPathTrait) {
     println!("\n[WRITE ENTRY]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
     let time: Instant = Instant::now();
 
     let idx: usize = 0;
-    let item: ExampleStruct = ExampleStruct {
-        id: idx as u128,
-        start_t: [idx, idx],
-        end_t: [idx, idx],
-        week: [true; 7],
-    };
+    let item: FixedSizeStruct = create_fixed_struct(idx);
     let _ = db.add_entry(&item);
 
     let taken: Duration = time.elapsed();
@@ -95,18 +88,13 @@ pub fn write_entry(path: &dyn CPathTrait) {
 pub fn find_entry_test(path: &dyn CPathTrait) {
     println!("\n[FIND ENTRY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
     let idx: usize = 1000;
-    let my_struct: ExampleStruct = ExampleStruct {
-        id: idx as u128,
-        start_t: [idx, idx],
-        end_t: [idx, idx],
-        week: [true; 7],
-    };
+    let item: FixedSizeStruct = create_fixed_struct(idx);
 
     let time: Instant = Instant::now();
-    println!("Contains: {:?}", db.contains(&my_struct));
+    println!("Contains: {:?}", db.contains(&item));
     let taken: Duration = time.elapsed();
     println!("Taken: {}ms", taken.as_millis());
 }
@@ -114,9 +102,9 @@ pub fn find_entry_test(path: &dyn CPathTrait) {
 pub fn get_entry_test(path: &dyn CPathTrait) {
     println!("\n[GET ENTRY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
     let time: Instant = Instant::now();
-    let entry: Result<DBEntry<ExampleStruct>, DBError> = db.get_by_uid(49_000);
+    let entry: Result<DBEntry<FixedSizeStruct>, DBError> = db.get_by_uid(49_000);
     let taken: Duration = time.elapsed();
     println!("Taken: {}ms", taken.as_millis());
     println!("Entry: {:?}", entry);
@@ -125,10 +113,10 @@ pub fn get_entry_test(path: &dyn CPathTrait) {
 pub fn database_benchmark(path: &dyn CPathTrait) {
     println!("\n[DATABASE BENCHMARK]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
     let mut file: FileBox = db.get_file_r();
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
+    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = DBIterator::from_file(&mut file);
 
     let mut uid: u32 = 0;
     let instant: Instant = Instant::now();
@@ -149,10 +137,10 @@ pub fn database_benchmark(path: &dyn CPathTrait) {
 pub fn database_integrity_test(path: &dyn CPathTrait) {
     println!("\n[DATABASE INTEGRITY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
     let mut file: FileBox = db.get_file_r();
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
+    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = DBIterator::from_file(&mut file);
 
     let mut uid: u32 = 0;
 
@@ -179,9 +167,9 @@ pub fn database_integrity_test(path: &dyn CPathTrait) {
 pub fn remove_test(path: &dyn CPathTrait) {
     println!("\n[REMOVE TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
-    let uid: u32 = 2;
+    let uid: u32 = 0;
     let instant: Instant = Instant::now();
     let _ = db.remove_by_uid(uid);
     let taken: Duration = instant.elapsed();
@@ -191,7 +179,7 @@ pub fn remove_test(path: &dyn CPathTrait) {
 pub fn remove_loop_test(path: &dyn CPathTrait) {
     println!("\n[REMOVE TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
     for uid in 0..500 {
         let instant: Instant = Instant::now();
@@ -204,20 +192,20 @@ pub fn remove_loop_test(path: &dyn CPathTrait) {
 pub fn query_test(path: &dyn CPathTrait) {
     println!("\n[QUERY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
-    let result: Result<DBEntry<ExampleStruct>, DBError> =
-        db.query(|s: &ExampleStruct| &s.start_t, [327, 327]);
+    let result: Result<DBEntry<FixedSizeStruct>, DBError> =
+        db.query(|s: &FixedSizeStruct| &s.start_t, [327, 327]);
     println!("Result: {:?}", result);
 }
 
 pub fn print_database(path: &dyn CPathTrait) {
     println!("\n[PRINT DATABASE]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
 
     let mut file: FileBox = db.get_file_r();
-    let db_iterator: DBIterator<'_, BTreeSet<ExampleStruct>> = DBIterator::from_file(&mut file);
+    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = DBIterator::from_file(&mut file);
 
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {
@@ -229,7 +217,7 @@ pub fn print_database(path: &dyn CPathTrait) {
 pub fn print_chunk_lens(path: &dyn CPathTrait) {
     println!("\n[PRINT CHUNK LENS]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
     let mut file: FileBox = db.get_file_r();
     let iterator = DBChunkIterator::from_file(&mut file);
 

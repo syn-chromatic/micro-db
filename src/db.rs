@@ -16,6 +16,7 @@ use core::marker::PhantomData;
 
 use error::DBError;
 use serializer::DBSerializer;
+use serializer::UIDSerializer;
 use stream::DBFileStream;
 use structures::DBEntry;
 use structures::DBIterator;
@@ -44,14 +45,10 @@ where
     T: IntoIterator + Eq,
     T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
-    fn get_uid_from_chunk(
-        &self,
-        chunk: Option<Vec<u8>>,
-        db_serializer: &DBSerializer<'_, T>,
-    ) -> u32 {
+    fn get_uid_from_chunk(&self, chunk: Option<Vec<u8>>) -> u32 {
         if let Some(chunk) = chunk {
             let first_block: &[u8] = &chunk[..BLOCK_SIZE];
-            let uid: u32 = db_serializer.deserialize_uid(first_block).unwrap();
+            let uid: u32 = UIDSerializer::new().deserialize_uid(first_block).unwrap();
             return uid + 1;
         }
         0
@@ -129,23 +126,12 @@ where
         let mut file: FileBox = self.get_file_rw();
         let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(&mut file);
         for _ in 0..uid {
-            db_stream.next_chunk()?;
+            db_stream.iter_chunk()?;
         }
 
         db_stream.remove_chunk()?;
         file.close()?;
         Ok(())
-    }
-
-    pub fn add_entry_from_file(&mut self, item: &T::Item, file: &mut FileBox) {
-        let mut db_stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
-        let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
-
-        let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
-        let uid: u32 = self.get_uid_from_chunk(last_chunk, &db_serializer);
-
-        let data: Vec<u8> = db_serializer.serialize(uid, item).unwrap();
-        db_stream.append_end(&data);
     }
 
     pub fn add_entry(&mut self, item: &T::Item) -> Result<(), DBError> {
@@ -154,7 +140,7 @@ where
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
-        let uid: u32 = self.get_uid_from_chunk(last_chunk, &db_serializer);
+        let uid: u32 = self.get_uid_from_chunk(last_chunk);
 
         let data: Vec<u8> = db_serializer.serialize(uid, item).unwrap();
         db_stream.append_end(&data);
@@ -168,7 +154,7 @@ where
         let db_serializer: DBSerializer<'_, T> = DBSerializer::new();
 
         let last_chunk: Option<Vec<u8>> = db_stream.last_chunk();
-        let uid: u32 = self.get_uid_from_chunk(last_chunk, &db_serializer);
+        let uid: u32 = self.get_uid_from_chunk(last_chunk);
 
         let data: Vec<u8> = db_serializer.serialize_items(uid, items).unwrap();
         db_stream.append_end(&data);
