@@ -5,7 +5,7 @@ Serialized database for Microcontrollers with memory efficiency in mind.
 ```
 Supports [no_std] with the "embedded" feature but requires an allocator.
 
-I use this allocator by jfrimmel:
+Embedded Allocator by [jfrimmel]:
 https://github.com/jfrimmel/emballoc
 
 This repository includes a modified version of emballoc for testing purposes.
