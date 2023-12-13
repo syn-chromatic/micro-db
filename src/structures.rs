@@ -1,3 +1,6 @@
+extern crate alloc;
+use alloc::vec::Vec;
+
 use crate::error;
 use crate::serializer;
 use crate::stream;
