@@ -27,6 +27,7 @@ fn fixed_size_test() {
 
     fixed_size_tests::database_benchmark(&path);
     fixed_size_tests::remove_test(&path);
+    fixed_size_tests::database_benchmark(&path);
     // fixed_size_tests::remove_loop_test(&path);
     // fixed_size_tests::print_database(&path);
     fixed_size_tests::database_integrity_test(&path);
@@ -60,5 +61,5 @@ fn variable_size_test() {
 #[cfg(feature = "std")]
 fn main() {
     fixed_size_test();
-    // variable_size_test();
+    variable_size_test();
 }

@@ -12,6 +12,7 @@ use core::hash;
 use core::marker::PhantomData;
 
 use bincode::config::legacy;
+use bincode::config::standard;
 use bincode::config::*;
 use bincode::decode_from_slice;
 use bincode::encode_to_vec;
@@ -63,7 +64,7 @@ where
     T::Item: Encode + Decode + hash::Hash + Eq + Debug,
 {
     fn bincode_serialize(&self, item: &T::Item) -> Result<Vec<u8>, DBError> {
-        let config: Configuration<LittleEndian, Fixint> = legacy();
+        let config: Configuration = standard();
         let bytes: Result<Vec<u8>, EncodeError> = encode_to_vec(item, config);
         if let Ok(bytes) = bytes {
             return Ok(bytes);
@@ -72,7 +73,7 @@ where
     }
 
     fn bincode_deserialize(&self, bytes: &[u8]) -> Result<T::Item, DBError> {
-        let config: Configuration<LittleEndian, Fixint> = legacy();
+        let config: Configuration = standard();
         let item: Result<(T::Item, usize), DecodeError> = decode_from_slice(bytes, config);
         if let Ok((item, _)) = item {
             return Ok(item);

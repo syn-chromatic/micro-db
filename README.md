@@ -16,7 +16,7 @@ This repository includes a modified version of emballoc for testing purposes.
 #### `⤷` Current Performance (not tested on an MCU)
 ```
 Iterates over an entire 7MB database file containing 100K entries
-while only utilizing 1KB on the heap and takes 58ms (0.58μs per entry)
+while only utilizing 1KB on the heap and takes 40ms (0.4μs per entry)
 using a cache size of 512 bytes.
 ```
 
