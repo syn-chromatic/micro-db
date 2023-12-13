@@ -21,11 +21,6 @@ using a cache size of 512 bytes.
 ```
 
 
-#### `⤷` Known Issues
-
-- ~~Serialized data with variable entry chunk sizes muddles the database on removal of entry~~ ─ Issue Fixed
-
-
 ___
 ### `➢` Structure (Not Finalized)
 ```
@@ -64,4 +59,18 @@ An arbitrary series of known bytes to indicate the end of an entry (needs more r
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  0xFF  |  0xFE  |  0xFD  |  0xFC  | -> EOE Block
+```
+
+
+___
+### `➢` Known Issues
+
+- ~~Serialized data with variable entry chunk sizes muddles the database on removal of entry~~ ─ Issue Fixed
+
+
+___
+### `➢` License
+```
+This project is licensed under the MIT License.
+See the LICENSE file for more information.
 ```
