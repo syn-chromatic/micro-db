@@ -10,8 +10,7 @@ extern crate alloc;
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use core::fmt::Debug;
-use core::hash;
+use core::hash::Hash;
 use core::marker::PhantomData;
 
 use error::DBError;
@@ -32,7 +31,7 @@ use bincode::Encode;
 pub struct Database<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     pub path: CPathBox,
     pub open: OpenFileBox,
@@ -43,7 +42,7 @@ where
 impl<'a, T> Database<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     fn get_uid_from_chunk(&self, chunk: Option<Vec<u8>>) -> u32 {
         if let Some(chunk) = chunk {
@@ -58,7 +57,7 @@ where
 impl<'a, T> Database<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     pub fn new(path: &dyn CPathTrait, open: OpenFileBox, strict_dupes: bool) -> Self {
         let path: CPathBox = path.boxed();

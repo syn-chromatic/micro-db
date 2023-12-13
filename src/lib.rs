@@ -22,6 +22,8 @@ pub mod stream;
 pub mod structures;
 pub mod traits;
 
+pub use bincode;
+
 #[cfg(feature = "std")]
 pub mod impls;
 #[cfg(feature = "std")]

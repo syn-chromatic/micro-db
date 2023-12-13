@@ -7,8 +7,7 @@ use crate::structures::DBEntry;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
-use core::fmt::Debug;
-use core::hash;
+use core::hash::Hash;
 use core::marker::PhantomData;
 
 use bincode::config::legacy;
@@ -50,7 +49,7 @@ impl UIDSerializer {
 pub struct DBSerializer<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     pub uid_serializer: UIDSerializer,
     pub _marker: PhantomData<&'a T>,
@@ -59,7 +58,7 @@ where
 impl<'a, T> DBSerializer<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     fn bincode_serialize(&self, item: &T::Item) -> Result<Vec<u8>, DBError> {
         let config: Configuration = standard();
@@ -89,7 +88,7 @@ where
 impl<'a, T> DBSerializer<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     pub fn new() -> Self {
         let uid_serializer: UIDSerializer = UIDSerializer::new();

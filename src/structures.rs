@@ -13,7 +13,7 @@ use stream::DBFileStream;
 use traits::FileBox;
 
 use core::fmt::Debug;
-use core::hash;
+use core::hash::Hash;
 
 use bincode::Decode;
 use bincode::Encode;
@@ -21,7 +21,7 @@ use bincode::Encode;
 #[derive(Debug)]
 pub struct DBEntry<T>
 where
-    T: Encode + Decode + hash::Hash + Eq + Debug,
+    T: Encode + Decode + Hash + Eq,
 {
     pub uid: u32,
     pub item: T,
@@ -29,7 +29,7 @@ where
 
 impl<T> DBEntry<T>
 where
-    T: Encode + Decode + hash::Hash + Eq + Debug,
+    T: Encode + Decode + Hash + Eq,
 {
     pub fn new(uid: u32, item: T) -> Self {
         Self { uid, item }
@@ -39,7 +39,7 @@ where
 pub struct DBIterator<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     stream: DBFileStream<'a, CACHE_SIZE>,
     serializer: DBSerializer<'a, T>,
@@ -48,7 +48,7 @@ where
 impl<'a, T> DBIterator<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     pub fn new(stream: DBFileStream<'a, CACHE_SIZE>, serializer: DBSerializer<'a, T>) -> Self {
         Self { stream, serializer }
@@ -64,7 +64,7 @@ where
 impl<'a, T> Iterator for DBIterator<'a, T>
 where
     T: IntoIterator + Eq,
-    T::Item: Encode + Decode + hash::Hash + Eq + Debug,
+    T::Item: Encode + Decode + Hash + Eq,
 {
     type Item = Result<DBEntry<T::Item>, DBError>;
 
