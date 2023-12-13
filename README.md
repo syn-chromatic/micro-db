@@ -41,7 +41,7 @@ An arbitrary series of known bytes to indicate the end of an entry (needs more r
 ```
 |   00   |   01   |   02   |   03   |
 |--------|--------|--------|--------|
-|       > FIRST ENTRY CHUNK <          |
+|       > FIRST ENTRY CHUNK <       |
 |  0x00  |  0x00  |  0x00  |  0x00  | -> Entry UID
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
@@ -51,7 +51,7 @@ An arbitrary series of known bytes to indicate the end of an entry (needs more r
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  0xFF  |  0xFE  |  0xFD  |  0xFC  | -> EOE Block
-|      > SECOND ENTRY CHUNK <          |
+|      > SECOND ENTRY CHUNK <       |
 |  0x01  |  0x00  |  0x00  |  0x00  | -> Entry UID
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
