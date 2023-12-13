@@ -170,7 +170,7 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
     ) -> Result<(), DBError> {
         while let Ok((_, en_pos2)) = self.get_chunk_bounds() {
             // Create UID block
-            let uid_block: Vec<u8> = self.uid_serializer.serialize_uid(uid)?;
+            let uid_block: [u8; BLOCK_SIZE] = self.uid_serializer.serialize_uid(uid);
 
             // Get next chunk
             let mut next_chunk: Vec<u8> = self.iter_chunk()?;

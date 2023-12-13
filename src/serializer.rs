@@ -28,14 +28,12 @@ impl UIDSerializer {
         Self {}
     }
 
-    pub fn serialize_uid(&self, uid: u32) -> Result<Vec<u8>, DBError> {
-        let config: Configuration<LittleEndian, Fixint> = legacy();
-        let bytes: Result<Vec<u8>, EncodeError> = encode_to_vec(&uid, config);
-        if let Ok(mut bytes) = bytes {
-            bytes.resize(BLOCK_SIZE, 0);
-            return Ok(bytes);
+    pub fn serialize_uid(&self, uid: u32) -> [u8; BLOCK_SIZE] {
+        let mut block: [u8; BLOCK_SIZE] = [0u8; BLOCK_SIZE];
+        for i in 0..BLOCK_SIZE {
+            block[i] = ((uid >> (i * 8)) & 0xFF) as u8;
         }
-        Err(DBError::UIDSerializeError)
+        block
     }
 
     pub fn deserialize_uid(&self, buffer: &[u8]) -> Result<u32, DBError> {
@@ -104,7 +102,7 @@ where
 
     pub fn serialize(&self, uid: u32, item: &T::Item) -> Result<Vec<u8>, DBError> {
         let mut buffer: Vec<u8> = Vec::new();
-        let uid_block: Vec<u8> = self.uid_serializer.serialize_uid(uid)?;
+        let uid_block: [u8; BLOCK_SIZE] = self.uid_serializer.serialize_uid(uid);
         buffer.extend(uid_block);
 
         let bytes: Vec<u8> = self.bincode_serialize(item)?;
@@ -129,7 +127,7 @@ where
 
         for item in items.into_iter() {
             let bytes: Vec<u8> = self.bincode_serialize(&item)?;
-            let uid_block: Vec<u8> = self.uid_serializer.serialize_uid(uid)?;
+            let uid_block: [u8; BLOCK_SIZE] = self.uid_serializer.serialize_uid(uid);
             buffer.extend(uid_block);
 
             for block in bytes.chunks(BLOCK_SIZE) {
