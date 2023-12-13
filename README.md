@@ -1,4 +1,4 @@
-## `⌽` MicroDB (In Development)
+## `⌽` MicroDB [In Development]
 Serialized database for Microcontrollers with memory efficiency in mind.
 
 #### `⤷` Notes
