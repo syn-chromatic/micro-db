@@ -9,24 +9,23 @@ use micro_db::tests::*;
 #[cfg(feature = "std")]
 fn main() {
     let path: CPath = CPath::new("./database.mdb");
-    // refresh_database(&path);
-    remove_database(&path);
-    write_entries_from_file(&path);
+    refresh_database(&path);
 
-    remove_database(&path);
-    write_entries_at_once(&path);
-
-    remove_database(&path);
-    write_entry(&path);
+    // write_entries_from_file(&path);
+    // write_entries_at_once(&path);
+    // write_entry(&path);
 
     // find_entry_test(&path);
     // get_entry_test(&path);
 
     // query_test(&path);
 
-    // database_benchmark(&path);
-    // remove_test(&path);
+    // print_chunk_lens(&path);
+
+    database_benchmark(&path);
+    remove_test(&path);
+    database_benchmark(&path);
     // remove_loop_test(&path);
-    // // print_database(&path);
-    // database_integrity_test(&path);
+    // print_database(&path);
+    database_integrity_test(&path);
 }

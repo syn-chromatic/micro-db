@@ -7,6 +7,7 @@ use std::time::Instant;
 use crate::db::Database;
 use crate::error::DBError;
 use crate::impls::OpenFile;
+use crate::structures::DBChunkIterator;
 use crate::structures::DBEntry;
 use crate::structures::DBIterator;
 use crate::traits::CPathTrait;
@@ -32,7 +33,7 @@ pub fn write_entries_from_file(path: &dyn CPathTrait) {
     let mut file: FileBox = db.get_file_rwc();
 
     let time: Instant = Instant::now();
-    for idx in 0..100_000 + 1 {
+    for idx in 0..1000 + 1 {
         let item: ExampleStruct = ExampleStruct {
             id: idx as u128,
             start_t: [idx, idx],
@@ -55,7 +56,7 @@ pub fn write_entries_at_once(path: &dyn CPathTrait) {
 
     let time: Instant = Instant::now();
     let mut items: BTreeSet<ExampleStruct> = BTreeSet::new();
-    for idx in 0..100_000 + 1 {
+    for idx in 0..1000 + 1 {
         let my_struct = ExampleStruct {
             id: idx as u128,
             start_t: [idx, idx],
@@ -221,6 +222,20 @@ pub fn print_database(path: &dyn CPathTrait) {
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {
             println!("Entry: {:?}", entry);
+        }
+    }
+}
+
+pub fn print_chunk_lens(path: &dyn CPathTrait) {
+    println!("\n[PRINT CHUNK LENS]");
+    let open: OpenFileBox = OpenFile::new();
+    let mut db: Database<'_, BTreeSet<ExampleStruct>> = Database::new(path, open, false);
+    let mut file: FileBox = db.get_file_r();
+    let iterator = DBChunkIterator::from_file(&mut file);
+
+    for chunk in iterator.into_iter() {
+        if let Ok(chunk) = chunk {
+            println!("Chunk Len: {}", chunk.len());
         }
     }
 }

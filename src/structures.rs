@@ -74,3 +74,26 @@ where
         None
     }
 }
+
+pub struct DBChunkIterator<'a> {
+    stream: DBFileStream<'a, CACHE_SIZE>,
+}
+
+impl<'a> DBChunkIterator<'a> {
+    pub fn from_file(file: &'a mut FileBox) -> Self {
+        let stream: DBFileStream<CACHE_SIZE> = DBFileStream::new(file);
+        Self { stream }
+    }
+}
+
+impl<'a> Iterator for DBChunkIterator<'a> {
+    type Item = Result<Vec<u8>, DBError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let chunk = self.stream.next_chunk();
+        if let Ok(chunk) = chunk {
+            return Some(Ok(chunk));
+        }
+        None
+    }
+}

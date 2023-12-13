@@ -13,18 +13,40 @@ while only utilizing 1KB on the heap and takes 58ms (0.58μs per entry)
 using a cache size of 512 bytes.
 ```
 
+#### `⤷` Known Issues
+```
+Serialized data with variable entry chunk sizes muddles the database on removal of entry
+```
+
+
 ___
 ### `➢` Structure (Not Finalized)
 ```
-EOE: End-Of-Entry
-An arbitrary series of bytes to indicate the end of an entry (needs more research).
+---
+Entry UID ─ [32-Bit Fixed-Size Integer]
+The unique ID for each database entry encoded in Little Endian byte order, and is always
+incrementing sequentially regardless if entries are removed.
+
+----
+EOE: End-Of-Entry ─ [32-Bit Fixed-Size Integer]
+An arbitrary series of known bytes to indicate the end of an entry (needs more research).
 ```
 
 #### `⤷` 4-byte aligned database structure
 ```
 |   00   |   01   |   02   |   03   |
 |--------|--------|--------|--------|
-|          > FIRST CHUNK <          |
+|       > FIRST ENTRY CHUNK <          |
+|  0x00  |  0x00  |  0x00  |  0x00  | -> Entry UID
+|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
+|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
+|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
+|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
+|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
+|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
+|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
+|  0xFF  |  0xFE  |  0xFD  |  0xFC  | -> EOE Block
+|      > SECOND ENTRY CHUNK <          |
 |  0x01  |  0x00  |  0x00  |  0x00  | -> Entry UID
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
@@ -34,40 +56,4 @@ An arbitrary series of bytes to indicate the end of an entry (needs more researc
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  0xFF  |  0xFE  |  0xFD  |  0xFC  | -> EOE Block
-|         > SECOND CHUNK <          |
-|  0x02  |  0x00  |  0x00  |  0x00  | -> Entry UID
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  0xFF  |  0xFE  |  0xFD  |  0xFC  | -> EOE Block
-```
-
-#### `⤷` 8-byte aligned database structure
-```
-|   00   |   01   |   02   |   03   |   04   |   05   |   06   |   07   |
-|--------|--------|--------|--------|--------|--------|--------|--------|
-|                            > FIRST CHUNK <                            |
-|  0x01  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  | -> Entry UID
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  0xFF  |  0xFE  |  0xFD  |  0xFC  |  0xFB  |  0xFA  |  0xF9  |  0xF9  | -> EOE Block
-|                           > SECOND CHUNK <                            |
-|  0x02  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  |  0x00  | -> Entry UID
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  0xFF  |  0xFE  |  0xFD  |  0xFC  |  0xFB  |  0xFA  |  0xF9  |  0xF9  | -> EOE Block
 ```
