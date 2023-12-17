@@ -32,6 +32,21 @@ Found in "traits.rs"
 This is already provided in an std environment, see "impls.rs".
 ```
 
+
+#### `⤷` Build Features
+```
+Usable Features:
+- std
+- embedded [no-std + alloc]
+
+All Features:
+- std
+- embedded [no-std + alloc]
+- no-std
+- alloc
+```
+
+
 ___
 ### `➢` Structure (Not Finalized)
 ```
