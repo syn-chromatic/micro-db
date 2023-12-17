@@ -23,7 +23,7 @@ using a cache size of 512 bytes.
 
 #### `⤷` Implementation
 ```
-To use in an embedded environment, you must provide implementations for:
+To use in a [no_std] environment, you must provide implementations for:
 - FileTrait
 - OpenFileTrait
 - CPathTrait
