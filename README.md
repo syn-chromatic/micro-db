@@ -21,6 +21,17 @@ using a cache size of 512 bytes.
 ```
 
 
+#### `⤷` Implementation
+```
+To use in an embedded environment, you must provide implementations for:
+- FileTrait
+- OpenFileTrait
+- CPathTrait
+Found in "traits.rs"
+
+This is already provided in an std environment, see "impls.rs".
+```
+
 ___
 ### `➢` Structure (Not Finalized)
 ```
