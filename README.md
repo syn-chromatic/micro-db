@@ -51,8 +51,8 @@ ___
 ### `➢` Structure (Not Finalized)
 ```
 Entry UID ─ [32-Bit Fixed-Size Integer]
-The unique ID for each database entry encoded in Little Endian byte order, and is always
-incrementing sequentially regardless if entries are removed.
+The unique unstable ID for each database entry encoded in Little Endian byte order,
+and is always incrementing sequentially regardless if entries are removed.
 
 
 EOE: End-Of-Entry ─ [32-Bit Fixed-Size Integer]
