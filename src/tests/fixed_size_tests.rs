@@ -39,7 +39,7 @@ pub fn create_fixed_struct(idx: usize) -> FixedSizeStruct {
 pub fn write_entries_at_once(path: &dyn CPathTrait) {
     println!("\n[WRITE ENTRIES AT ONCE]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
     let time: Instant = Instant::now();
     let mut items: BTreeSet<FixedSizeStruct> = BTreeSet::new();
@@ -57,7 +57,7 @@ pub fn write_entries_at_once(path: &dyn CPathTrait) {
 pub fn write_entries(path: &dyn CPathTrait) {
     println!("\n[WRITE ENTRIES]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
     let time: Instant = Instant::now();
 
@@ -73,7 +73,7 @@ pub fn write_entries(path: &dyn CPathTrait) {
 pub fn write_entry(path: &dyn CPathTrait) {
     println!("\n[WRITE ENTRY]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
     let time: Instant = Instant::now();
 
@@ -88,7 +88,7 @@ pub fn write_entry(path: &dyn CPathTrait) {
 pub fn find_entry_test(path: &dyn CPathTrait) {
     println!("\n[FIND ENTRY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
     let idx: usize = 1000;
     let item: FixedSizeStruct = create_fixed_struct(idx);
@@ -102,7 +102,7 @@ pub fn find_entry_test(path: &dyn CPathTrait) {
 pub fn get_entry_test(path: &dyn CPathTrait) {
     println!("\n[GET ENTRY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
     let time: Instant = Instant::now();
     let entry: Result<DBEntry<FixedSizeStruct>, DBError> = db.get_by_uid(49_000);
     let taken: Duration = time.elapsed();
@@ -113,10 +113,9 @@ pub fn get_entry_test(path: &dyn CPathTrait) {
 pub fn database_benchmark(path: &dyn CPathTrait) {
     println!("\n[DATABASE BENCHMARK]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
-    let mut file: FileBox = db.get_file_r();
-    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = DBIterator::from_file(&mut file);
+    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = db.get_iterator().unwrap();
 
     let mut uid: u32 = 0;
     let instant: Instant = Instant::now();
@@ -137,10 +136,9 @@ pub fn database_benchmark(path: &dyn CPathTrait) {
 pub fn database_integrity_test(path: &dyn CPathTrait) {
     println!("\n[DATABASE INTEGRITY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
-    let mut file: FileBox = db.get_file_r();
-    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = DBIterator::from_file(&mut file);
+    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = db.get_iterator().unwrap();
 
     let mut uid: u32 = 0;
 
@@ -167,7 +165,7 @@ pub fn database_integrity_test(path: &dyn CPathTrait) {
 pub fn remove_test(path: &dyn CPathTrait) {
     println!("\n[REMOVE TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
     let uid: u32 = 0;
     let instant: Instant = Instant::now();
@@ -179,7 +177,7 @@ pub fn remove_test(path: &dyn CPathTrait) {
 pub fn remove_loop_test(path: &dyn CPathTrait) {
     println!("\n[REMOVE TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
     for uid in 0..500 {
         let instant: Instant = Instant::now();
@@ -192,7 +190,7 @@ pub fn remove_loop_test(path: &dyn CPathTrait) {
 pub fn query_test(path: &dyn CPathTrait) {
     println!("\n[QUERY TEST]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
     let result: Result<DBEntry<FixedSizeStruct>, DBError> =
         db.query(|s: &FixedSizeStruct| &s.start_t, [327, 327]);
@@ -202,10 +200,9 @@ pub fn query_test(path: &dyn CPathTrait) {
 pub fn print_database(path: &dyn CPathTrait) {
     println!("\n[PRINT DATABASE]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
-    let mut file: FileBox = db.get_file_r();
-    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = DBIterator::from_file(&mut file);
+    let db_iterator: DBIterator<'_, BTreeSet<FixedSizeStruct>> = db.get_iterator().unwrap();
 
     for entry in db_iterator.into_iter() {
         if let Ok(entry) = entry {
@@ -217,11 +214,11 @@ pub fn print_database(path: &dyn CPathTrait) {
 pub fn print_chunk_lens(path: &dyn CPathTrait) {
     println!("\n[PRINT CHUNK LENS]");
     let open: OpenFileBox = OpenFile::new();
-    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open, false);
-    let mut file: FileBox = db.get_file_r();
-    let iterator = DBChunkIterator::from_file(&mut file);
+    let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
-    for chunk in iterator.into_iter() {
+    let chunk_iterator: DBChunkIterator<'_> = db.get_chunk_iterator().unwrap();
+
+    for chunk in chunk_iterator.into_iter() {
         if let Ok(chunk) = chunk {
             println!("Chunk Len: {}", chunk.len());
         }

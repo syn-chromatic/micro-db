@@ -9,5 +9,6 @@ pub enum DBError {
     UIDDeserializeError,
     InvalidData,
     EntryNotFound,
+    FailedToRetrieveIterator,
     IOError(String),
 }
