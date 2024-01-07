@@ -1,19 +1,20 @@
 extern crate alloc;
+extern crate micro_db;
+
 use alloc::collections::BTreeSet;
 
 use std::time::Duration;
 use std::time::Instant;
 
-use crate::db::Database;
-use crate::error::DBError;
-use crate::impls::OpenFile;
-use crate::structures::DBChunkIterator;
-use crate::structures::DBEntry;
-use crate::structures::DBIterator;
-use crate::traits::CPathTrait;
-use crate::traits::FileBox;
-use crate::traits::OpenFileBox;
-use crate::traits::OpenFileTrait;
+use micro_db::db::Database;
+use micro_db::error::DBError;
+use micro_db::impls::OpenFile;
+use micro_db::structures::DBChunkIterator;
+use micro_db::structures::DBEntry;
+use micro_db::structures::DBIterator;
+use micro_db::traits::CPathTrait;
+use micro_db::traits::OpenFileBox;
+use micro_db::traits::OpenFileTrait;
 
 use bincode::Decode;
 use bincode::Encode;

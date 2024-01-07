@@ -27,6 +27,4 @@ pub use bincode;
 #[cfg(feature = "std")]
 pub mod impls;
 #[cfg(feature = "std")]
-pub mod tests;
-#[cfg(feature = "std")]
 pub mod utils;

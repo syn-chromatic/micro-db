@@ -1,14 +1,16 @@
-#![cfg_attr(feature = "embedded", no_std)]
-#![cfg_attr(feature = "embedded", no_main)]
+mod fixed_size_tests;
+mod variable_size_tests;
 
-#[cfg(feature = "std")]
+extern crate micro_db;
 use micro_db::impls::CPath;
-#[cfg(feature = "std")]
-use micro_db::tests::fixed_size_tests;
-#[cfg(feature = "std")]
-use micro_db::tests::variable_size_tests;
 
-#[cfg(feature = "std")]
+#[test]
+fn run_all() {
+    fixed_size_test();
+    variable_size_test();
+}
+
+#[test]
 fn fixed_size_test() {
     println!("[FIXED SIZE TEST]");
     let path: CPath = CPath::new("./database.mdb");
@@ -33,7 +35,7 @@ fn fixed_size_test() {
     fixed_size_tests::database_integrity_test(&path);
 }
 
-#[cfg(feature = "std")]
+#[test]
 fn variable_size_test() {
     println!("[VARIABLE SIZE TEST]");
     let path: CPath = CPath::new("./database.mdb");
@@ -56,10 +58,4 @@ fn variable_size_test() {
     // variable_size_tests::remove_loop_test(&path);
     variable_size_tests::print_database(&path);
     variable_size_tests::database_integrity_test(&path);
-}
-
-#[cfg(feature = "std")]
-fn main() {
-    fixed_size_test();
-    variable_size_test();
 }
