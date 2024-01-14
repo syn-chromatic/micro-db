@@ -11,4 +11,5 @@ pub enum DBError {
     EntryNotFound,
     FailedToRetrieveIterator,
     IOError(String),
+    EndOfFileStream,
 }

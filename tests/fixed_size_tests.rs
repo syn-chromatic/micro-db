@@ -20,10 +20,10 @@ use bincode::Decode;
 use bincode::Encode;
 
 const WRITE_ENTRIES_AT_ONCE: usize = 100_000 + 1;
-const WRITE_ENTRIES: usize = 1000;
+const WRITE_ENTRIES: usize = 1000 + 1;
 const FIND_ENTRY: usize = 1000;
 const REMOVE_TEST: u32 = 0;
-const REMOVE_LOOP_TEST: u32 = 1_000;
+const REMOVE_LOOP_TEST: u32 = 100;
 
 #[derive(Encode, Decode, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct FixedSizeStruct {
@@ -111,7 +111,7 @@ pub fn get_entry_test(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
     let time: Instant = Instant::now();
-    let entry: Result<DBEntry<FixedSizeStruct>, DBError> = db.get_by_uid(49_000);
+    let entry: Result<DBEntry<FixedSizeStruct>, DBError> = db.get_by_uid(490);
     let taken: Duration = time.elapsed();
     println!("Taken: {}ms", taken.as_millis());
     println!("Entry: {:?}", entry);
@@ -236,6 +236,7 @@ pub fn refresh_database(path: &dyn CPathTrait) {
     println!("\n[REFRESH DATABASE]");
     remove_database(path);
     write_entries_at_once(path);
+    // write_entries(path);
 }
 
 pub fn remove_database(path: &dyn CPathTrait) {

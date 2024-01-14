@@ -26,6 +26,10 @@ impl<const N: usize> Range<N> {
     pub fn set_end(&mut self, end: usize) {
         self.end = end;
     }
+
+    pub fn length(&self) -> usize {
+        self.end - self.start
+    }
 }
 
 pub struct DBStreamCache<'a, const N: usize> {
@@ -44,10 +48,31 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
         }
     }
 
+    fn cache_position(&self) -> usize {
+        self.cache_range.start + self.cache_offset
+    }
+
+    fn write_to_file_directly(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
+        let length: usize = self.file.write(buffer)?;
+        self.position += length;
+        self.cache_from_start(self.position - N)?;
+        self.cache_offset = N;
+        Ok(length)
+    }
+
+    fn copy_into_cache(&mut self, buffer: &[u8]) {
+        self.cache_buffer[self.cache_offset..self.cache_offset + buffer.len()]
+            .copy_from_slice(buffer);
+
+        self.cache_offset += buffer.len();
+        self.cache_written = true;
+    }
+
     fn flush_cache_buffer(&mut self) -> Result<(), DBError> {
         let start: usize = self.position;
+        let cache_length: usize = self.cache_range.length();
 
-        if self.cache_written && self.cache_range.start != self.cache_range.end {
+        if self.cache_written && cache_length > 0 {
             self.file.seek(self.cache_range.start)?;
             let length: usize = self.cache_range.end - self.cache_range.start;
             let buffer: &[u8] = &self.cache_buffer[0..length];
@@ -65,12 +90,12 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
 
         let mut buffer: [u8; N] = [0; N];
         let length: usize = self.file.read(&mut buffer)?;
+        self.position += length;
+
         if length == 0 {
-            self.set_cache(buffer, 0, 0);
-            return Err(DBError::IOError("End of file stream".into()));
+            return Err(DBError::EndOfFileStream);
         }
 
-        self.position += length;
         self.set_cache(buffer, start, self.position);
         Ok(())
     }
@@ -109,7 +134,8 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
     }
 
     pub fn read(&mut self, buffer: &mut [u8; BLOCK_SIZE]) -> Result<(), DBError> {
-        if self.cache_offset != N && self.cache_range.start != self.cache_range.end {
+        let cache_length: usize = self.cache_range.length();
+        if self.cache_offset < cache_length && cache_length > 0 {
             let head: usize = self.cache_offset;
             let tail: usize = head + BLOCK_SIZE;
 
@@ -126,25 +152,32 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
 
     pub fn write(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
         if buffer.len() > N {
-            let length: usize = self.file.write(buffer)?;
-            self.position += length;
-            self.cache_from_start(self.position - N)?;
-            self.cache_offset = N;
-            return Ok(length);
-        } else if (self.cache_range.start + self.cache_offset + buffer.len())
-            <= self.cache_range.end
-            && self.cache_range.start != self.cache_range.end
+            return self.write_to_file_directly(buffer);
+        } else if (self.cache_position() + buffer.len()) <= self.cache_range.end
+            && self.cache_range.length() > 0
         {
-            self.cache_buffer[self.cache_offset..self.cache_offset + buffer.len()]
-                .copy_from_slice(buffer);
-            self.cache_offset += buffer.len();
-            self.cache_written = true;
+            self.copy_into_cache(buffer);
             return Ok(buffer.len());
         }
 
         self.flush_cache_buffer()?;
         let start: usize = self.cache_range.start + self.cache_offset;
-        self.cache_from_start(start)?;
+        let result: Result<(), DBError> = self.cache_from_start(start);
+        if let Err(error) = result {
+            match error {
+                DBError::EndOfFileStream => {
+                    if self.cache_offset + buffer.len() > N {
+                        self.flush_cache_buffer()?;
+                        self.set_cache([0; N], start, start);
+                    }
+
+                    self.copy_into_cache(buffer);
+                    self.cache_range.set_end(start + buffer.len());
+                    return Ok(buffer.len());
+                }
+                error => return Err(error),
+            }
+        }
         self.write(buffer)?;
         Ok(buffer.len())
     }
@@ -219,8 +252,6 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
             uid_serializer,
         }
     }
-
-    pub fn get_chunk_uid(&mut self) {}
 
     pub fn get_chunk_bounds(&mut self) -> Result<(usize, usize), DBError> {
         let cache_st: usize = self.stream.cache_range.start + self.stream.cache_offset;
