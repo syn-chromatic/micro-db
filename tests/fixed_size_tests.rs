@@ -19,6 +19,12 @@ use micro_db::traits::OpenFileTrait;
 use bincode::Decode;
 use bincode::Encode;
 
+const WRITE_ENTRIES_AT_ONCE: usize = 100_000 + 1;
+const WRITE_ENTRIES: usize = 1000;
+const FIND_ENTRY: usize = 1000;
+const REMOVE_TEST: u32 = 0;
+const REMOVE_LOOP_TEST: u32 = 1_000;
+
 #[derive(Encode, Decode, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct FixedSizeStruct {
     id: u128,
@@ -44,7 +50,7 @@ pub fn write_entries_at_once(path: &dyn CPathTrait) {
 
     let time: Instant = Instant::now();
     let mut items: BTreeSet<FixedSizeStruct> = BTreeSet::new();
-    for idx in 0..100_000 + 1 {
+    for idx in 0..WRITE_ENTRIES_AT_ONCE {
         let item: FixedSizeStruct = create_fixed_struct(idx);
         items.insert(item);
         print!("Idx: {}    \r", idx);
@@ -62,7 +68,7 @@ pub fn write_entries(path: &dyn CPathTrait) {
 
     let time: Instant = Instant::now();
 
-    for idx in 0..1000 {
+    for idx in 0..WRITE_ENTRIES {
         let item: FixedSizeStruct = create_fixed_struct(idx);
         let _ = db.add_entry(&item);
     }
@@ -168,7 +174,7 @@ pub fn remove_test(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
-    let uid: u32 = 0;
+    let uid: u32 = REMOVE_TEST;
     let instant: Instant = Instant::now();
     let _ = db.remove_by_uid(uid);
     let taken: Duration = instant.elapsed();
@@ -180,7 +186,7 @@ pub fn remove_loop_test(path: &dyn CPathTrait) {
     let open: OpenFileBox = OpenFile::new();
     let mut db: Database<'_, BTreeSet<FixedSizeStruct>> = Database::new(path, open);
 
-    for uid in 0..500 {
+    for uid in (0..REMOVE_LOOP_TEST).rev() {
         let instant: Instant = Instant::now();
         let _ = db.remove_by_uid(uid);
         let taken: Duration = instant.elapsed();

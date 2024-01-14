@@ -28,140 +28,153 @@ impl<const N: usize> Range<N> {
     }
 }
 
-pub struct DBStreamCache<const N: usize> {
-    ready: bool,
-    offset: usize,
-    range: Range<N>,
-    cache: [u8; N],
+pub struct DBStreamCache<'a, const N: usize> {
+    file: &'a mut FileBox,
+    position: usize,
+    cache_offset: usize,
+    cache_range: Range<N>,
+    cache_buffer: [u8; N],
+    cache_written: bool,
 }
 
-impl<const N: usize> DBStreamCache<N> {
-    fn get_segment_bounds(&self) -> (usize, usize) {
-        let head: usize = self.offset;
-        let tail: usize = head + BLOCK_SIZE;
-        (head, tail)
-    }
-
-    fn update_offset(&mut self, tail: usize) {
-        if tail == N {
-            self.ready = false;
-            self.offset += BLOCK_SIZE;
-        } else {
-            self.offset += BLOCK_SIZE;
+impl<'a, const N: usize> DBStreamCache<'a, N> {
+    fn increment_offset(&mut self) {
+        if self.cache_offset < self.cache_range.end {
+            self.cache_offset += BLOCK_SIZE;
         }
     }
+
+    fn flush_cache_buffer(&mut self) -> Result<(), DBError> {
+        let start: usize = self.position;
+
+        if self.cache_written && self.cache_range.start != self.cache_range.end {
+            self.file.seek(self.cache_range.start)?;
+            let length: usize = self.cache_range.end - self.cache_range.start;
+            let buffer: &[u8] = &self.cache_buffer[0..length];
+            self.file.write(buffer)?;
+            self.file.seek(start)?;
+            self.cache_written = false;
+        }
+
+        Ok(())
+    }
+
+    fn cache_from_start(&mut self, start: usize) -> Result<(), DBError> {
+        self.file.seek(start)?;
+        self.position = start;
+
+        let mut buffer: [u8; N] = [0; N];
+        let length: usize = self.file.read(&mut buffer)?;
+        if length == 0 {
+            self.set_cache(buffer, 0, 0);
+            return Err(DBError::IOError("End of file stream".into()));
+        }
+
+        self.position += length;
+        self.set_cache(buffer, start, self.position);
+        Ok(())
+    }
+
+    fn set_cache(&mut self, cache: [u8; N], start: usize, end: usize) {
+        self.cache_offset = 0;
+        self.cache_buffer = cache;
+        self.cache_written = false;
+
+        self.cache_range.set_start(start);
+        self.cache_range.set_end(end);
+    }
+
+    fn seek_from_offset(&mut self, offset: usize) {
+        self.cache_offset = offset;
+    }
 }
 
-impl<const N: usize> DBStreamCache<N> {
-    pub fn new() -> Self {
-        let ready: bool = false;
-        let offset: usize = 0;
-        let range: Range<N> = Range::new();
-        let cache: [u8; N] = [0; N];
+impl<'a, const N: usize> DBStreamCache<'a, N> {
+    pub fn new(file: &'a mut FileBox) -> Self {
+        file.seek(0).unwrap();
+        let position: usize = 0;
+        let cache_offset: usize = 0;
+        let cache_range: Range<N> = Range::new();
+        let cache_buffer: [u8; N] = [0; N];
+        let cache_written: bool = false;
+
         Self {
-            ready,
-            offset,
-            range,
-            cache,
+            file,
+            position,
+            cache_offset,
+            cache_range,
+            cache_buffer,
+            cache_written,
         }
     }
 
-    pub fn is_ready(&self) -> bool {
-        self.ready
+    pub fn read(&mut self, buffer: &mut [u8; BLOCK_SIZE]) -> Result<(), DBError> {
+        if self.cache_offset != N && self.cache_range.start != self.cache_range.end {
+            let head: usize = self.cache_offset;
+            let tail: usize = head + BLOCK_SIZE;
+
+            buffer.copy_from_slice(&self.cache_buffer[head..tail]);
+            self.increment_offset();
+            return Ok(());
+        }
+
+        self.flush_cache_buffer()?;
+        self.cache_from_start(self.position)?;
+        self.read(buffer)?;
+        Ok(())
     }
 
-    pub fn set_ready(&mut self, status: bool) {
-        self.ready = status;
+    pub fn write(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
+        if buffer.len() > N {
+            let length: usize = self.file.write(buffer)?;
+            self.position += length;
+            self.cache_from_start(self.position - N)?;
+            self.cache_offset = N;
+            return Ok(length);
+        } else if (self.cache_range.start + self.cache_offset + buffer.len())
+            <= self.cache_range.end
+            && self.cache_range.start != self.cache_range.end
+        {
+            self.cache_buffer[self.cache_offset..self.cache_offset + buffer.len()]
+                .copy_from_slice(buffer);
+            self.cache_offset += buffer.len();
+            self.cache_written = true;
+            return Ok(buffer.len());
+        }
+
+        self.flush_cache_buffer()?;
+        let start: usize = self.cache_range.start + self.cache_offset;
+        self.cache_from_start(start)?;
+        self.write(buffer)?;
+        Ok(buffer.len())
     }
 
-    pub fn set_cache(&mut self, cache: [u8; N], start: usize, end: usize) {
-        self.ready = true;
-        self.offset = 0;
-        self.cache = cache;
+    pub fn seek_from_start(&mut self, start: usize) -> Result<usize, DBError> {
+        let cache_st: usize = self.cache_range.start;
+        let cache_en: usize = self.cache_range.end;
 
-        self.range.set_start(start);
-        self.range.set_end(end);
+        if cache_st <= start && cache_en >= start {
+            let offset: usize = start - cache_st;
+            self.seek_from_offset(offset);
+            return Ok(start);
+        }
+
+        self.flush_cache_buffer()?;
+        self.cache_from_start(start)?;
+        Ok(start)
     }
 
-    pub fn get_chunk(&mut self) -> [u8; BLOCK_SIZE] {
-        let (head, tail): (usize, usize) = self.get_segment_bounds();
-
-        let bytes: &[u8] = &self.cache[head..tail];
-        let chunk: [u8; BLOCK_SIZE] = {
-            let mut result: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
-            result.copy_from_slice(&bytes[..BLOCK_SIZE]);
-            result
-        };
-
-        self.update_offset(tail);
-        chunk
-    }
-
-    pub fn seek_from_offset(&mut self, offset: usize) {
-        self.offset = offset;
+    pub fn set_len(&mut self, size: usize) -> Result<(), DBError> {
+        self.file.set_len(size)
     }
 }
 
 pub struct DBFileStream<'a, const N: usize> {
-    file: &'a mut FileBox,
-    cache: DBStreamCache<N>,
-    file_position: usize,
+    stream: DBStreamCache<'a, N>,
     uid_serializer: UIDSerializer,
 }
 
 impl<'a, const N: usize> DBFileStream<'a, N> {
-    fn update_cache(&mut self) -> Result<(), DBError> {
-        if !self.cache.is_ready() {
-            let start: usize = self.file_position;
-            let end: usize = start + N;
-
-            let mut buffer: [u8; N] = [0; N];
-            let result: Result<(), DBError> = self.file.read_exact(&mut buffer);
-            self.file_position += N;
-
-            if let Err(error) = result {
-                // This assumes that the read buffer contains EOE at the end
-                // Which is not ideal.
-                let mut unused_length: usize = 0;
-                for value in buffer.iter().rev() {
-                    if *value == 0 {
-                        unused_length += 1;
-                    } else {
-                        break;
-                    }
-                }
-                self.file_position -= unused_length;
-
-                if unused_length == N {
-                    return Err(error);
-                }
-            }
-            self.cache.set_cache(buffer, start, end);
-            return Ok(());
-        }
-        Ok(())
-    }
-
-    fn seek_from_start(&mut self, start: usize) -> Result<(), DBError> {
-        let cache_st: usize = self.cache.range.start;
-        let cache_en: usize = self.cache.range.end;
-
-        if cache_st <= start && cache_en > start {
-            let offset: usize = start - cache_st;
-            self.cache.seek_from_offset(offset);
-        }
-
-        let seek: usize = self.file.seek(start)?;
-        self.file_position = seek;
-        Ok(())
-    }
-
-    fn write(&mut self, buffer: &[u8]) -> Result<(), DBError> {
-        let write_len: usize = self.file.write(buffer).unwrap();
-        self.file_position += write_len;
-        Ok(())
-    }
-
     fn rebuild_database(
         &mut self,
         st_pos1: &mut usize,
@@ -179,13 +192,13 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
             next_chunk[..BLOCK_SIZE].copy_from_slice(&uid_block);
 
             // Seek to current chunk start
-            self.seek_from_start(*st_pos1)?;
+            self.stream.seek_from_start(*st_pos1)?;
 
             // Overwrite with next chunk data
-            self.write(&next_chunk)?;
+            self.stream.write(&next_chunk)?;
 
             // Seek to the end of next chunk
-            self.seek_from_start(en_pos2)?;
+            self.stream.seek_from_start(en_pos2)?;
 
             // Set position of next chunk
             *st_pos1 = *st_pos1 + next_chunk.len();
@@ -199,13 +212,10 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
 
 impl<'a, const N: usize> DBFileStream<'a, N> {
     pub fn new(file: &'a mut FileBox) -> Self {
-        let cache: DBStreamCache<N> = DBStreamCache::new();
-        let file_position: usize = 0;
+        let stream: DBStreamCache<'_, N> = DBStreamCache::new(file);
         let uid_serializer: UIDSerializer = UIDSerializer::new();
         DBFileStream {
-            file,
-            cache,
-            file_position,
+            stream,
             uid_serializer,
         }
     }
@@ -213,8 +223,8 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
     pub fn get_chunk_uid(&mut self) {}
 
     pub fn get_chunk_bounds(&mut self) -> Result<(usize, usize), DBError> {
-        self.update_cache()?;
-        let cache_st: usize = self.cache.offset + self.cache.range.start;
+        let cache_st: usize = self.stream.cache_range.start + self.stream.cache_offset;
+
         for block in self.into_iter() {
             if let Ok(block) = block {
                 if block == EOE_BLOCK {
@@ -225,15 +235,14 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
             return Err(DBError::InvalidData);
         }
 
-        let cache_en: usize = self.cache.offset + self.cache.range.start;
-        self.seek_from_start(cache_st)?;
+        let cache_en: usize = self.stream.cache_range.start + self.stream.cache_offset;
+        self.stream.seek_from_start(cache_st)?;
         Ok((cache_st, cache_en))
     }
 
     pub fn append_end(&mut self, data: &[u8]) {
         while let Ok(_) = self.iter_chunk() {}
-        let write_len: usize = self.file.write(data).unwrap();
-        self.file_position += write_len;
+        let _ = self.stream.write(data);
     }
 
     pub fn last_chunk(&mut self) -> Option<Vec<u8>> {
@@ -255,7 +264,6 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
                 }
                 continue;
             }
-            return Err(DBError::InvalidData);
         }
         Err(DBError::InvalidData)
     }
@@ -268,7 +276,7 @@ impl<'a, const N: usize> DBFileStream<'a, N> {
         let current_uid: u32 = self.uid_serializer.deserialize_uid(current_uid_block)?;
 
         let _ = self.rebuild_database(&mut st_pos1, &mut en_pos1, current_uid);
-        self.file.set_len(st_pos1)?;
+        self.stream.set_len(st_pos1)?;
         Ok(())
     }
 }
@@ -277,17 +285,19 @@ impl<'a, const N: usize> Iterator for DBFileStream<'a, N> {
     type Item = Result<[u8; BLOCK_SIZE], DBError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cache.is_ready() {
-            let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
-            return Some(Ok(bytes));
+        let mut buffer: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+        let result: Result<(), DBError> = self.stream.read(&mut buffer);
+
+        if let Ok(_) = result {
+            return Some(Ok(buffer));
         }
 
-        let result: Result<(), DBError> = self.update_cache();
-        if let Err(error) = result {
-            return Some(Err(error));
-        }
+        None
+    }
+}
 
-        let bytes: [u8; BLOCK_SIZE] = self.cache.get_chunk();
-        return Some(Ok(bytes));
+impl<'a, const N: usize> Drop for DBFileStream<'a, N> {
+    fn drop(&mut self) {
+        self.stream.flush_cache_buffer().unwrap();
     }
 }

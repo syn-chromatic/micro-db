@@ -14,10 +14,10 @@ use std::io::Seek;
 use std::io::SeekFrom;
 
 impl FileTrait for File {
-    fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), DBError> {
-        let result: Result<(), Error> = <Self as Read>::read_exact(self, buffer);
-        if result.is_ok() {
-            return Ok(());
+    fn read(&mut self, buffer: &mut [u8]) -> Result<usize, DBError> {
+        let result: Result<usize, Error> = <Self as Read>::read(self, buffer);
+        if let Ok(value) = result {
+            return Ok(value);
         }
 
         let db_error: DBError = result.unwrap_err().into();
@@ -67,8 +67,6 @@ impl FileTrait for File {
     fn close(self: Box<Self>) -> Result<(), DBError> {
         Ok(())
     }
-
-
 }
 
 impl Into<DBError> for std::io::Error {

@@ -9,7 +9,7 @@ pub type CPathBox = Box<dyn CPathTrait>;
 pub type OpenFileBox = Box<dyn OpenFileTrait>;
 
 pub trait FileTrait {
-    fn read_exact(&mut self, buffer: &mut [u8]) -> Result<(), DBError>;
+    fn read(&mut self, buffer: &mut [u8]) -> Result<usize, DBError>;
     fn write(&mut self, buffer: &[u8]) -> Result<usize, DBError>;
     fn write_all(&mut self, buffer: &[u8]) -> Result<(), DBError>;
     fn seek(&mut self, position: usize) -> Result<usize, DBError>;
