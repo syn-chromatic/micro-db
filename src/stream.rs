@@ -80,7 +80,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
         if self.cache_written && cache_length > 0 {
             self.file.seek(self.cache_range.start)?;
             let length: usize = self.cache_range.end - self.cache_range.start;
-            let buffer: &[u8] = &self.cache_buffer[0..length];
+            let buffer: &[u8] = &self.cache_buffer[..length];
             self.file.write(buffer)?;
             self.file.seek(start)?;
             self.cache_written = false;
