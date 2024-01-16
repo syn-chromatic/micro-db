@@ -42,22 +42,27 @@ pub struct DBStreamCache<'a, const N: usize> {
 }
 
 impl<'a, const N: usize> DBStreamCache<'a, N> {
-    fn increment_offset(&mut self) {
+    fn cache_position(&self) -> usize {
+        self.cache_range.start + self.cache_offset
+    }
+
+    fn increment_cache_offset(&mut self) {
         if self.cache_offset < self.cache_range.end {
             self.cache_offset += BLOCK_SIZE;
         }
     }
 
-    fn cache_position(&self) -> usize {
-        self.cache_range.start + self.cache_offset
+    fn seek_cache_offset(&mut self, offset: usize) {
+        self.cache_offset = offset;
     }
 
-    fn write_to_file_directly(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
-        let length: usize = self.file.write(buffer)?;
-        self.position += length;
-        self.cache_from_start(self.position - N)?;
-        self.cache_offset = N;
-        Ok(length)
+    fn set_cache(&mut self, cache: [u8; N], start: usize, end: usize) {
+        self.cache_offset = 0;
+        self.cache_buffer = cache;
+        self.cache_written = false;
+
+        self.cache_range.set_start(start);
+        self.cache_range.set_end(end);
     }
 
     fn copy_into_cache(&mut self, buffer: &[u8]) {
@@ -100,23 +105,30 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
         Ok(())
     }
 
-    fn set_cache(&mut self, cache: [u8; N], start: usize, end: usize) {
-        self.cache_offset = 0;
-        self.cache_buffer = cache;
-        self.cache_written = false;
+    fn cache_write_end(&mut self, buffer: &[u8], start: usize) -> Result<usize, DBError> {
+        if self.cache_offset + buffer.len() > N {
+            self.flush_cache_buffer()?;
+            self.set_cache([0; N], start, start);
+        }
 
-        self.cache_range.set_start(start);
-        self.cache_range.set_end(end);
+        self.copy_into_cache(buffer);
+        self.cache_range.set_end(start + buffer.len());
+        return Ok(buffer.len());
     }
 
-    fn seek_from_offset(&mut self, offset: usize) {
-        self.cache_offset = offset;
+    fn write_to_file(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
+        let length: usize = self.file.write(buffer)?;
+        self.position += length;
+        self.cache_from_start(self.position - N)?;
+        self.cache_offset = N;
+        Ok(length)
     }
 }
 
 impl<'a, const N: usize> DBStreamCache<'a, N> {
     pub fn new(file: &'a mut FileBox) -> Self {
         file.seek(0).unwrap();
+
         let position: usize = 0;
         let cache_offset: usize = 0;
         let cache_range: Range<N> = Range::new();
@@ -140,7 +152,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
             let tail: usize = head + BLOCK_SIZE;
 
             buffer.copy_from_slice(&self.cache_buffer[head..tail]);
-            self.increment_offset();
+            self.increment_cache_offset();
             return Ok(());
         }
 
@@ -152,7 +164,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
 
     pub fn write(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
         if buffer.len() > N {
-            return self.write_to_file_directly(buffer);
+            return self.write_to_file(buffer);
         } else if (self.cache_position() + buffer.len()) <= self.cache_range.end
             && self.cache_range.length() > 0
         {
@@ -166,14 +178,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
         if let Err(error) = result {
             match error {
                 DBError::EndOfFileStream => {
-                    if self.cache_offset + buffer.len() > N {
-                        self.flush_cache_buffer()?;
-                        self.set_cache([0; N], start, start);
-                    }
-
-                    self.copy_into_cache(buffer);
-                    self.cache_range.set_end(start + buffer.len());
-                    return Ok(buffer.len());
+                    return self.cache_write_end(buffer, start);
                 }
                 error => return Err(error),
             }
@@ -188,7 +193,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
 
         if cache_st <= start && cache_en >= start {
             let offset: usize = start - cache_st;
-            self.seek_from_offset(offset);
+            self.seek_cache_offset(offset);
             return Ok(start);
         }
 
