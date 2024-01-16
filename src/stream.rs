@@ -7,12 +7,12 @@ use crate::traits::FileBox;
 use crate::BLOCK_SIZE;
 use crate::EOE_BLOCK;
 
-pub struct Range<const N: usize> {
+pub struct Range {
     start: usize,
     end: usize,
 }
 
-impl<const N: usize> Range<N> {
+impl Range {
     pub fn new() -> Self {
         let start: usize = 0;
         let end: usize = 0;
@@ -36,13 +36,13 @@ pub struct DBStreamCache<'a, const N: usize> {
     file: &'a mut FileBox,
     position: usize,
     cache_offset: usize,
-    cache_range: Range<N>,
+    cache_range: Range,
     cache_buffer: [u8; N],
     cache_written: bool,
 }
 
 impl<'a, const N: usize> DBStreamCache<'a, N> {
-    fn cache_position(&self) -> usize {
+    fn get_cache_position(&self) -> usize {
         self.cache_range.start + self.cache_offset
     }
 
@@ -66,11 +66,21 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
     }
 
     fn copy_into_cache(&mut self, buffer: &[u8]) {
-        self.cache_buffer[self.cache_offset..self.cache_offset + buffer.len()]
-            .copy_from_slice(buffer);
+        let start: usize = self.cache_offset;
+        let end: usize = start + buffer.len();
+        self.cache_buffer[start..end].copy_from_slice(buffer);
 
         self.cache_offset += buffer.len();
         self.cache_written = true;
+    }
+
+    fn buffer_fits_cache(&self, buffer: &[u8]) -> bool {
+        if self.cache_range.length() > 0
+            && (self.get_cache_position() + buffer.len()) <= self.cache_range.end
+        {
+            return true;
+        }
+        false
     }
 
     fn flush_cache_buffer(&mut self) -> Result<(), DBError> {
@@ -79,8 +89,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
 
         if self.cache_written && cache_length > 0 {
             self.file.seek(self.cache_range.start)?;
-            let length: usize = self.cache_range.end - self.cache_range.start;
-            let buffer: &[u8] = &self.cache_buffer[..length];
+            let buffer: &[u8] = &self.cache_buffer[..cache_length];
             self.file.write(buffer)?;
             self.file.seek(start)?;
             self.cache_written = false;
@@ -95,12 +104,12 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
 
         let mut buffer: [u8; N] = [0; N];
         let length: usize = self.file.read(&mut buffer)?;
-        self.position += length;
 
         if length == 0 {
             return Err(DBError::EndOfFileStream);
         }
 
+        self.position += length;
         self.set_cache(buffer, start, self.position);
         Ok(())
     }
@@ -131,7 +140,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
 
         let position: usize = 0;
         let cache_offset: usize = 0;
-        let cache_range: Range<N> = Range::new();
+        let cache_range: Range = Range::new();
         let cache_buffer: [u8; N] = [0; N];
         let cache_written: bool = false;
 
@@ -148,10 +157,10 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
     pub fn read(&mut self, buffer: &mut [u8; BLOCK_SIZE]) -> Result<(), DBError> {
         let cache_length: usize = self.cache_range.length();
         if self.cache_offset < cache_length && cache_length > 0 {
-            let head: usize = self.cache_offset;
-            let tail: usize = head + BLOCK_SIZE;
+            let start: usize = self.cache_offset;
+            let end: usize = start + BLOCK_SIZE;
 
-            buffer.copy_from_slice(&self.cache_buffer[head..tail]);
+            buffer.copy_from_slice(&self.cache_buffer[start..end]);
             self.increment_cache_offset();
             return Ok(());
         }
@@ -165,9 +174,7 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
     pub fn write(&mut self, buffer: &[u8]) -> Result<usize, DBError> {
         if buffer.len() > N {
             return self.write_to_file(buffer);
-        } else if (self.cache_position() + buffer.len()) <= self.cache_range.end
-            && self.cache_range.length() > 0
-        {
+        } else if self.buffer_fits_cache(buffer) {
             self.copy_into_cache(buffer);
             return Ok(buffer.len());
         }
