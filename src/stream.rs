@@ -210,7 +210,12 @@ impl<'a, const N: usize> DBStreamCache<'a, N> {
     }
 
     pub fn set_len(&mut self, size: usize) -> Result<(), DBError> {
-        self.file.set_len(size)
+        self.flush_cache_buffer()?;
+        self.set_cache([0; N], size, size);
+        self.file.set_len(size)?;
+        self.file.seek(size)?;
+        self.position = size;
+        Ok(())
     }
 }
 
