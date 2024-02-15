@@ -37,7 +37,7 @@ where
     pub path: CPathBox,
     pub open: OpenFileBox,
     pub file: Option<(FileBox, [bool; 3])>,
-    pub _marker: PhantomData<&'a T>,
+    pub marker: PhantomData<&'a T>,
 }
 
 impl<'a, T> Database<'a, T>
@@ -63,11 +63,12 @@ where
     pub fn new(path: &dyn CPathTrait, open: OpenFileBox) -> Self {
         let path: CPathBox = path.boxed();
         let file: Option<(FileBox, [bool; 3])> = None;
+        let marker: PhantomData<&T> = PhantomData;
         Database {
             path,
             open,
             file,
-            _marker: PhantomData,
+            marker,
         }
     }
 

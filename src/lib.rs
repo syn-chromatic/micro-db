@@ -13,7 +13,7 @@ compile_error!(
 
 pub const BLOCK_SIZE: usize = 4;
 pub const CACHE_SIZE: usize = 2048;
-pub const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xFF, 0xFE, 0xFD, 0xFC];
+pub const EOE_BLOCK: [u8; BLOCK_SIZE] = [0xC2, 0xB5, 0x64, 0x62];
 
 pub mod db;
 pub mod error;

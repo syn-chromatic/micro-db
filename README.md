@@ -1,23 +1,15 @@
 ## `⌽` MicroDB [In Development]
-Serialized database for Microcontrollers with memory efficiency in mind.
+Serialized database for MicroControllers with memory efficiency in mind, requiring only 1KB utilization on the heap regardless of the database size.
 
 
 #### `⤷` Notes
 ```
-Supports [no_std] with the "embedded" feature but requires an allocator.
+Supports [no_std] with the "embedded" feature that requires an allocator.
 
 Embedded Allocator by [jfrimmel]:
 https://github.com/jfrimmel/emballoc
 
 This repository includes a modified version of emballoc for testing purposes.
-```
-
-
-#### `⤷` Current Performance (not tested on an MCU)
-```
-Iterates over an entire 7MB database file containing 100K entries
-while only utilizing 1KB on the heap and takes 35ms (0.35μs per entry)
-using a cache size of 512 bytes.
 ```
 
 
@@ -27,9 +19,9 @@ To use in a [no_std] environment, you must provide implementations for:
 - FileTrait
 - OpenFileTrait
 - CPathTrait
-Found in "traits.rs"
+Found in 'traits.rs'
 
-This is already provided in an std environment, see "impls.rs".
+This is already provided in an std environment, see 'impls.rs'.
 ```
 
 
@@ -48,7 +40,7 @@ All Features:
 
 
 ___
-### `➢` Structure (Not Finalized)
+### `➢` Structure
 ```
 Entry UID ─ [32-Bit Fixed-Size Integer]
 The unique unstable ID for each database entry encoded in Little Endian byte order,
@@ -56,7 +48,7 @@ and is always incrementing sequentially regardless if entries are removed.
 
 
 EOE: End-Of-Entry ─ [32-Bit Fixed-Size Integer]
-An arbitrary series of known bytes to indicate the end of an entry (needs more research).
+An arbitrary series of known bytes to indicate the end of an entry.
 ```
 
 
@@ -73,7 +65,7 @@ An arbitrary series of known bytes to indicate the end of an entry (needs more r
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  0xFF  |  0xFE  |  0xFD  |  0xFC  | -> EOE Block
+|  0xC2  |  0xB5  |  0x64  |  0x62  | -> EOE Block
 |      > SECOND ENTRY CHUNK <       |
 |  0x01  |  0x00  |  0x00  |  0x00  | -> Entry UID
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
@@ -83,15 +75,8 @@ An arbitrary series of known bytes to indicate the end of an entry (needs more r
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
 |  XXXX  |  XXXX  |  XXXX  |  XXXX  | -> Serialized Data
-|  0xFF  |  0xFE  |  0xFD  |  0xFC  | -> EOE Block
+|  0xC2  |  0xB5  |  0x64  |  0x62  | -> EOE Block
 ```
-
-
-___
-### `➢` Known Issues
-
-- ~~Serialized data with variable entry chunk sizes muddles the database on removal of entry~~ ─ Issue Fixed
-
 
 ___
 ### `➢` License
